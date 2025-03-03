@@ -437,9 +437,7 @@ class PhaseTrajectory:
         assert 't' in kwargs
         self.t = np.copy(kwargs['t'])
 
-        self.theta_sp = sp.interpolate.make_interp_spline(self.phase[:,0], self.phase[:, 1:3], k=5)
-
-        
+        self.theta_sp = sp.interpolate.make_interp_spline(self.phase[:,0], self.phase[:, [3,6]], k=5)
 
     @property
     def theta(self):
