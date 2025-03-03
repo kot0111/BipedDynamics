@@ -211,23 +211,9 @@ class TransverseLinearization:
         for i in range(len(self.trajectory.t)):
             K[i] = B[:, :, i].T @ P_real[:,:,i]
         
-        print(K[0])
+        # print(K[0])
         return K
 
   
 
-# def get_coeffs(trj : PhaseTrajectory, constr : Constraint, d : Dynamics):
-#   A, B = get_transverse_linearization(trajectory, solution['theta_constraint'], solution['dynamics'])
-#   A = np.transpose(A, (1,2,0))
-#   B = np.transpose(B, (1,2,0))
-
-#   sio.savemat(name_mat, {'t':trajectory.t, 'A':A, 'B':B})
-
-#   P_real = sio.loadmat(name_coeffs)['P_real']
-#   K = np.zeros((len(trajectory.t), 1, 3))
-
-#   for i in range(len(trajectory.t)):
-#       K[i] = B[:, :, i].T @ P_real[:,:,i]
-  
-#   return K
 

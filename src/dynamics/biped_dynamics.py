@@ -115,10 +115,12 @@ class BipedDynamics:
 
         leg_length = self.params.leg_length
 
-        x_m, y_m = pivot_m
+        #TODO На свежую голову проверить, точно ли можно y_m брать 0
+        x_m = pivot_m
+        y_m = 0
         x_p = x_m + leg_length * np.sin(q1_m) - leg_length * np.sin(q2_m)
         y_p = y_m + leg_length * np.cos(q1_m) - leg_length * np.cos(q2_m)
-        pivot_p = (x_p, y_p)
+        pivot_p = x_p
 
         Me, E = self.__eval_Impact(state_m)
         
@@ -132,7 +134,7 @@ class BipedDynamics:
         dq2_p, dq1_p, dq3_p = tuple(map(float, x.flatten()[0:3]))
         q2_p, q1_p, q3_p = state_m[0:3]
 
-        state_p = q1_p, q2_p, q3_p, dq1_p, dq2_p, dq3_p
+        state_p = np.array([q1_p, q2_p, q3_p, dq1_p, dq2_p, dq3_p])
 
         return state_p, pivot_p
     
@@ -142,6 +144,18 @@ class BipedDynamics:
         G = self.__eval_G(state)
         B = self.__eval_B(state)
         return M, C, G, B
+    
+    #TODO Проверить
+    def rhs_fun(self, state, u):
+
+        M, C, G, B = self.dynamics(state)
+        Mi = np.linalg.inv(M)
+
+        ddq = Mi @ ( - G - C @ np.array([state[3:6]]).T + B * u)
+
+        rhs = np.concatenate((np.array([state[3:6]]), ddq.T), axis=1)[0]
+        
+        return(rhs)
     
     
 class Constraints:
@@ -194,8 +208,6 @@ class Constraints:
         ax3.set_title(r'Torso')
         
         plt.show()
-
-        #TODO В этот сплайн можно передавать только первые пару элементов, стоит ли передавать все?
         
         self.spline = sp.interpolate.make_interp_spline(t, y.T, k=5)
 
