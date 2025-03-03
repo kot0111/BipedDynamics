@@ -21,7 +21,7 @@ def animate(trj : PhaseTrajectory, redraw_flag = 0):
 
     q1, q2, q3 = trj.q.T
 
-    x1 = trj.pivot + np.sin(q1)
+    x1 = trj.pivot * redraw_flag + np.sin(q1)
     y1 = np.cos(q1)
     x2 = x1 - np.sin(q2)
     y2 = y1 - np.cos(q2)
@@ -29,7 +29,7 @@ def animate(trj : PhaseTrajectory, redraw_flag = 0):
     y3 = y1 + np.cos(q3)
 
     def animate(i):
-        thisx = [trj.pivot[i], x1[i], x2[i], x1[i], x3[i]]
+        thisx = [trj.pivot[i] * redraw_flag, x1[i], x2[i], x1[i], x3[i]]
 
         thisy = [0, y1[i], y2[i], y1[i], y3[i]]
 
@@ -45,8 +45,10 @@ def animate(trj : PhaseTrajectory, redraw_flag = 0):
 
         return line, time_text
     
+    interv = int((trj.t[1] - trj.t[0]) * 1000)
+
     anim = animation.FuncAnimation(
-        fig, func=animate, frames=q1.shape[0], interval=5, blit=True, repeat=True)
+        fig, func=animate, frames=q1.shape[0], interval=interv, blit=True, repeat=True)
     
 
     plt.show()
