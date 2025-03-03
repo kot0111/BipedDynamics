@@ -2,7 +2,8 @@ import sympy as sp
 import numpy as np
 import scipy.io as sio
 
-from dynamics.biped_dynamics import BipedDynamics, Constraints, PhaseTrajectory
+from dynamics.biped_dynamics import BipedDynamics, Constraints
+from trajectory.trajectory import PhaseTrajectory
 
 class TransverseLinearization:
     def __init__(self, trj : PhaseTrajectory, constr : Constraints, d : BipedDynamics):

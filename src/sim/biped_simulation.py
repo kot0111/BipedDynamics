@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from dynamics.biped_dynamics import PhaseTrajectory, BipedDynamics
+from dynamics.biped_dynamics import  BipedDynamics
 from dynamics.parameters import BipedParameters
+from trajectory.trajectory import PhaseTrajectory
 
 
 def animate(trj : PhaseTrajectory):
@@ -45,6 +46,6 @@ def animate(trj : PhaseTrajectory):
     plt.show()
 
 class BipedSimulator:
-    def __init__(self, bippr : BipedDynamics, fb : callable):
+    def __init__(self, bippr : BipedParameters, fb : callable):
         dyn = BipedDynamics(bippr)
         

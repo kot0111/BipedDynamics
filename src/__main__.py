@@ -1,5 +1,6 @@
 from dynamics.parameters import load_biped_parameters
-from dynamics.biped_dynamics import BipedDynamics, Constraints, PhaseTrajectory, get_trajectory
+from dynamics.biped_dynamics import BipedDynamics, Constraints
+from trajectory.trajectory import PhaseTrajectory, get_trajectory
 from sim.biped_simulation import animate
 from transverse_linearization.linearization import TransverseLinearization
 
