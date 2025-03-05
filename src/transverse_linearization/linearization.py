@@ -15,7 +15,6 @@ class TransverseLinearization:
         self.get_trans_funs()
         self.Ku = self.mat_file()
 
-
     def get_trans_funs(self):
         K = self.dynamics.params.K
         hip_mass = self.dynamics.params.hip_mass
@@ -33,7 +32,7 @@ class TransverseLinearization:
         y1, y2, dy1, dy2, ddy1, ddy2 = sp.symbols('y1 y2 dy1 dy2 ddy1 ddy2')
         phi2, phi3, phi2_p, phi3_p, phi2_pp, phi3_pp = sp.symbols('phi_2 phi_3 phi_2\' phi_3\' phi_2\'\' phi_3\'\'')
 
-        M = sp.Matrix([[(hip_mass + 5/4 * leg_mass + torso_mass)* leg_length**2, 1/2 * leg_mass * leg_length**2 * sp.cos(q1 - q2), torso_mass * leg_length * torso_com * sp.cos(q1 - q3)],
+        M = sp.Matrix([[(hip_mass + 5/4 * leg_mass + torso_mass)* leg_length**2, - 1/2 * leg_mass * leg_length**2 * sp.cos(q1 - q2), torso_mass * leg_length * torso_com * sp.cos(q1 - q3)],
                        [-1/2*leg_mass* leg_length**2 * sp.cos(q1 - q2), 1/4 * leg_mass * leg_length**2, 0],
                        [torso_mass * leg_length * torso_com * sp.cos(q1 - q3), 0, torso_mass * torso_com**2]])
         
@@ -56,6 +55,7 @@ class TransverseLinearization:
                              [ddq3]])
         
         lin_comb_coeffs = sp.Matrix([[1, 1, -leg_length/torso_com * sp.cos(q1 -q3)]])
+        
         assert (lin_comb_coeffs @ B)[0,0] == 0
 
         full_expression = lin_comb_coeffs @ (M @ ddq_vec + C @ dq_vec + G)
@@ -75,6 +75,11 @@ class TransverseLinearization:
         gamma = (lin_comb_coeffs.subs(q3, phi3) @ G.subs([(q2, phi2), (q3, phi3)]))[0,0]
         _gamma_pttp = sp.lambdify([q1, phi2, phi3, phi2_p, phi3_p, phi2_pp, phi3_pp], gamma)
         self.gamma = lambda theta: _gamma_pttp(theta, *self.constraints(theta)[0:6])
+
+        # print(self.alpha(0), self.beta(0), self.gamma(0))
+        # print(self.constraints._abgu_coeffs_temp(0))
+        # print(self.trajectory.theta_sp(0))
+        # input()
 
         v1 = sp.Matrix([[-phi2_p, 1, 0]])
         v2 = sp.Matrix([[-phi3_p, 0, 1]])
@@ -130,6 +135,9 @@ class TransverseLinearization:
         _N1_pttp = sp.lambdify([q1, y1, y2, phi2, phi3, phi2_p, phi3_p], N1)
         self.N1 = lambda theta, y1, y2: _N1_pttp(theta, y1, y2, *self.constraints(theta)[0:4])
 
+        _R1_pttp = sp.lambdify([q1, dq1, y1, y2, dy1, dy2, phi2, phi3, phi2_p, phi3_p, phi2_pp, phi3_pp], R1)
+        self.R1 = lambda theta, dtheta, y1, y2, dy1, dy2: _R1_pttp(theta, dtheta, y1, y2, dy1, dy2, *self.constraints(theta)[0:6])
+
         #TODO выполнить замену, чтобы оставить зависимость только от q1, dq1, y1, dy1, y2, dy2
         #TODO взять частные производные и получить функции для линеаризации
 
@@ -169,7 +177,7 @@ class TransverseLinearization:
 
             return a, gv(theta, dtheta, ddtheta) * 2*dtheta / self.alpha(theta)
         
-        # print(ab(0))
+        # print("test1")
         
         self.ab = ab
 
@@ -211,6 +219,8 @@ class TransverseLinearization:
         for i in range(len(self.trajectory.t)):
             K[i] = B[:, :, i].T @ P_real[:,:,i]
         
+        #TODO сделать сохранение в файл и, если уже существует, просто загружать из файлаы
+
         # print(K[0])
         return K
 

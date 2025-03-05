@@ -354,6 +354,24 @@ class Constraints:
         gamma = A @ G[:,0]
 
         return alpha, beta, gamma, (A @ B[:,0]) * u
+    
+    # def _abgu_coeffs_temp(self, theta):
+
+    #     q2, q3, q2p, q3p, q2pp, q3pp, u = self(theta)
+
+    #     Q = [theta, q2, q3]
+    #     Q1 = [1, q2p, q3p]
+    #     Q2 = [0, q2pp, q3pp]
+
+    #     M,C,G,B = self.dynamics.dynamics(Q + Q1)
+
+    #     A = np.array([[1, 1, - 2 * np.cos(theta - q3)]])
+    
+    #     alpha = A @ M @ Q1
+    #     beta = A @ (M @ Q2 + C @ Q1)
+    #     gamma = A @ G[:,0]
+
+    #     return alpha, beta, gamma
 
     def __call__(self, phi, der=0):
         return self.spline(phi, der)

@@ -4,7 +4,7 @@ from matplotlib import animation
 from dynamics.biped_dynamics import  BipedDynamics
 from dynamics.parameters import BipedParameters
 from trajectory.trajectory import PhaseTrajectory
-from scipy.integrate import ode, solve_ivp
+from scipy.integrate import ode
 from dataclasses import dataclass
 
 def animate(trj : PhaseTrajectory, redraw_flag = 0):
@@ -28,7 +28,14 @@ def animate(trj : PhaseTrajectory, redraw_flag = 0):
     x3 = x1 + np.sin(q3)
     y3 = y1 + np.cos(q3)
 
-    def animate(i):
+    interv = int((trj.t[10] - trj.t[9]) * 1000)
+    if interv < 5:
+        k = 10
+    else:
+        k = 1
+
+    def animate(j):
+        i = j * k
         thisx = [trj.pivot[i] * redraw_flag, x1[i], x2[i], x1[i], x3[i]]
 
         thisy = [0, y1[i], y2[i], y1[i], y3[i]]
@@ -45,10 +52,10 @@ def animate(trj : PhaseTrajectory, redraw_flag = 0):
 
         return line, time_text
     
-    interv = int((trj.t[1] - trj.t[0]) * 1000)
+    
 
     anim = animation.FuncAnimation(
-        fig, func=animate, frames=q1.shape[0], interval=interv, blit=True, repeat=True)
+        fig, func=animate, frames=q1.shape[0] // k, interval=interv * k, blit=True, repeat=True)
     
 
     plt.show()
@@ -104,11 +111,11 @@ class BipedSimulator:
 
             integrator = ode(rhs)
             integrator.set_initial_value(self.state, self.t)
-            integrator.set_integrator('dopri5', max_step=self.step)
+            integrator.set_integrator('vode', max_step=self.step)
 
             while True:
                 if not integrator.successful():
-                    print('[warn] integrator doesn\'t feel good')
+                    print('[warn] integrator doesn\'t feel good at t = ', self.t)
 
                 # step of integration
                 integrator.integrate(self.t + self.step)
