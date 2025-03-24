@@ -111,7 +111,7 @@ class BipedSimulator:
 
             integrator = ode(rhs)
             integrator.set_initial_value(self.state, self.t)
-            integrator.set_integrator('vode', max_step=self.step)
+            integrator.set_integrator('dopri5', max_step=self.step)
 
             while True:
                 if not integrator.successful():

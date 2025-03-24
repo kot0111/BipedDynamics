@@ -13,7 +13,9 @@ class TransverseLinearization:
         self.trajectory = trj
 
         self.get_trans_funs()
+        self.switching_linearization()
         self.Ku = self.mat_file()
+        
 
     def get_trans_funs(self):
         K = self.dynamics.params.K
@@ -35,7 +37,8 @@ class TransverseLinearization:
         M = sp.Matrix([[(hip_mass + 5/4 * leg_mass + torso_mass)* leg_length**2, - 1/2 * leg_mass * leg_length**2 * sp.cos(q1 - q2), torso_mass * leg_length * torso_com * sp.cos(q1 - q3)],
                        [-1/2*leg_mass* leg_length**2 * sp.cos(q1 - q2), 1/4 * leg_mass * leg_length**2, 0],
                        [torso_mass * leg_length * torso_com * sp.cos(q1 - q3), 0, torso_mass * torso_com**2]])
-        
+        self.sym_M = M
+
         C = sp.Matrix([[  0, - 1/2 * leg_mass * leg_length**2 *sp.sin(q1-q2) * dq2, torso_mass*leg_length*torso_com*sp.sin(q1 -q3)*dq3],
                        [  1/2 * leg_mass * leg_length**2 *sp.sin(q1-q2) * dq1, 0, 0],
                        [- torso_mass*leg_length*torso_com*sp.sin(q1 -q3)*dq1, 0, 0]])
@@ -200,11 +203,66 @@ class TransverseLinearization:
 
         return A, B
     
+    def switching_linearization(self):
+
+        K = self.dynamics.params.K
+        hip_mass = self.dynamics.params.hip_mass
+        leg_mass = self.dynamics.params.leg_mass
+        torso_mass = self.dynamics.params.torso_mass
+        torso_com = self.dynamics.params.torso_com
+        leg_length = self.dynamics.params.leg_length
+        gravity_acceleration =  self.dynamics.params.gravity_acceleration
+
+        q1, q2, q3 = sp.symbols('q1 q2 q3')
+        dq1, dq2, dq3 = sp.symbols('dq1 dq2 dq3')
+        ddq1, ddq2, ddq3 = sp.symbols('ddq1 ddq2 ddq3')
+        v = sp.symbols('v')
+
+        y1, y2, dy1, dy2, ddy1, ddy2 = sp.symbols('y1 y2 dy1 dy2 ddy1 ddy2')
+        phi2, phi3, phi2_p, phi3_p, phi2_pp, phi3_pp = sp.symbols('phi_2 phi_3 phi_2\' phi_3\' phi_2\'\' phi_3\'\'')
+
+        E = sp.Matrix([[ leg_length * sp.cos(q1), - leg_length * sp.cos(q2), 0, 1, 0],
+                       [-leg_length * sp.sin(q1),   leg_length * sp.sin(q2), 0, 0, 1]])
+
+
+        Me11 = self.sym_M
+        Me12 = sp.Matrix.zeros(3,2)
+
+        Me12[0,0] =   (1.5 * leg_mass +  hip_mass + torso_mass) * leg_length * sp.cos(q1) #De14
+        Me12[0,1] = - (1.5 * leg_mass +  hip_mass + torso_mass) * leg_length * sp.sin(q1) #De15
+        Me12[1,0] = - 0.5 * leg_mass * leg_length * sp.cos(q2) #De24
+        Me12[1,1] =   0.5 * leg_mass * leg_length * sp.sin(q2)#De25
+        Me12[2,0] =   torso_mass * torso_com * sp.cos(q3)#De34
+        Me12[2,1] = - torso_mass * torso_com * sp.sin(q3)#De35
+
+        Me22 = sp.Matrix.zeros(2,2)
+
+        Me22[0,0] = \
+        Me22[1,1] = 2 * leg_mass + hip_mass + torso_mass #De44, De55
+
+        # Me = sp.block([[Me11, Me12],[Me12.T, Me22]])
+        Me = sp.Matrix.zeros(5,5)
+        Me[0:3,0:3] = Me11
+        Me[0:3,3:5] = Me12
+        Me[3:5,0:3] = Me12.T
+        Me[3:5,3:5] = Me22
+
+        Fi = sp.Matrix.zeros(7,7)
+        Fi[0:5, 0:5] =   Me
+        Fi[0:5, 5:7] = - E.T
+        Fi[5:7, 0:5] =   E
+
+        F = Fi.inv()
+
+        
+    
     def mat_file(self):
+
 
         n = len(self.trajectory.t)
         A = np.zeros((n, 5, 5))
         B = np.zeros((n, 5, 1))
+        L = np.zeros((5, 5))
 
         for i in range(n):
             A[i], B[i] = self.matrix(i)

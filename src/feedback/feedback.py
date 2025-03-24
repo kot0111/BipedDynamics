@@ -55,14 +55,18 @@ class Feedback:
     def get_transverse(self, state):
         theta, q2, q3, dtheta, dq2, dq3 = state
 
+        clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
+
+        theta = clamp(theta, self.trajectory.theta[0], self.trajectory.theta[-1])
+
         I = dtheta**2 - self.Psi(theta) * (self.trajectory.dtheta[0]**2  - self.Part(theta))
         # print(I)
         # print(t)
         # # I2 = self.trajectory.dtheta[10]**2 - self.Psi(self.trajectory.theta[10]) * (self.trajectory.dtheta[0]**2  - self.Part(self.trajectory.theta[10]))
         # # print(I2)
         # input()
-        # I = 0
-        print(I)
+        I = 0
+        # print(I)
 
         y1 = q2 - self.constraints(theta)[0]
         y2 = q3 - self.constraints(theta)[1]

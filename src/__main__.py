@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     System['trajectory'] = PhaseTrajectory(**trajectory)
 
-    animate(System['trajectory'])
+    # animate(System['trajectory'])
 
     System['transverse_linearization'] = TransverseLinearization(System['trajectory'], System['constraints'], System['dynamics'])
 
@@ -31,6 +31,6 @@ if __name__ == "__main__":
 
     feedback = Feedback(System['transverse_linearization'])
     sim = BipedSimulator(System['parameters'], feedback)
-    result = sim.run(state_plus, 0, 3.5)
+    result = sim.run(state_plus, 0, 3.0)
     animate(result.trajectory, redraw_flag=1)
 

@@ -176,7 +176,7 @@ class Constraints:
         
         t, y = self._get_trajectory(initial_state)
 
-        fig, ( ax2, ax3) = plt.subplots(1,2)
+        # fig, ( ax2, ax3) = plt.subplots(1,2)
         # ax1.plot(t, y[6])
         # ax1.grid(True)
         # ax1.set_ylabel(r'$\tau$ [Nm]')
@@ -195,19 +195,19 @@ class Constraints:
         # ax3.set_xlabel(r'$q_1 = \theta$ [rad]')
         # ax3.set_title(r'Torso')
 
-        ax2.plot(y[0], y[2])
-        ax2.grid(True)
-        ax2.set_ylabel(r"$ q_2'$ ")
-        ax2.set_xlabel(r"$q_2$ [rad]")
-        ax2.set_title(r'Swing leg')
+        # ax2.plot(y[0], y[2])
+        # ax2.grid(True)
+        # ax2.set_ylabel(r"$ q_2'$ ")
+        # ax2.set_xlabel(r"$q_2$ [rad]")
+        # ax2.set_title(r'Swing leg')
 
-        ax3.plot(y[1], y[3])
-        ax3.grid(True)
-        ax3.set_ylabel(r"$q_3'$")
-        ax3.set_xlabel(r'$q_3$ [rad]')
-        ax3.set_title(r'Torso')
+        # ax3.plot(y[1], y[3])
+        # ax3.grid(True)
+        # ax3.set_ylabel(r"$q_3'$")
+        # ax3.set_xlabel(r'$q_3$ [rad]')
+        # ax3.set_title(r'Torso')
         
-        plt.show()
+        # plt.show()
         
         self.spline = sp.interpolate.make_interp_spline(t, y.T, k=5)
 
