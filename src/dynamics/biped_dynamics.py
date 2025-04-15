@@ -115,7 +115,6 @@ class BipedDynamics:
 
         leg_length = self.params.leg_length
 
-        #TODO На свежую голову проверить, точно ли можно y_m брать 0
         x_m = pivot_m
         y_m = 0
         x_p = x_m + leg_length * np.sin(q1_m) - leg_length * np.sin(q2_m)
@@ -210,6 +209,7 @@ class Constraints:
         # plt.show()
         
         self.spline = sp.interpolate.make_interp_spline(t, y.T, k=5)
+        self.theta = t
 
         
         
@@ -288,7 +288,7 @@ class Constraints:
             return q2p, q3p, q2pp, q3pp, q2ppp, q3ppp, up
 
         #TODO Заменить решатель на Эйлера
-        result = sp.integrate.solve_ivp(rhs, [initial_state[1], -initial_state[1]], constraints_array, t_eval=np.linspace(initial_state[1], -initial_state[1], 300), method='RK45')
+        result = sp.integrate.solve_ivp(rhs, [initial_state[1], -initial_state[1]], constraints_array, t_eval=np.linspace(initial_state[1], -initial_state[1], 100), method='RK45')
 
         return result.t, result.y
 
@@ -395,7 +395,7 @@ def reduced_dynamics(self, constr: Constraints):
 
         initial_state = constr.initial_state
         
-        t = np.arange(0, 1.00, 0.005)
+        t = np.arange(0, 1.00, 0.003)
         sol = sp.integrate.solve_ivp(rhs, [t[0], t[-1]], [initial_state[1], initial_state[3]], t_eval=t, max_step=1e-3, events=hit_ground)
 
         ddth = np.zeros((1, len(sol.t)))

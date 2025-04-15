@@ -1,6 +1,7 @@
 import sympy as sp
 import numpy as np
 import scipy.io as sio
+import scipy
 
 from dynamics.biped_dynamics import BipedDynamics, Constraints
 from trajectory.trajectory import PhaseTrajectory
@@ -13,9 +14,10 @@ class TransverseLinearization:
         self.trajectory = trj
 
         self.get_trans_funs()
+        self._init_psi()
+        self._init_part()
         self.switching_linearization()
-        self.Ku = self.mat_file()
-        
+        self.Ku = self.mat_file()        
 
     def get_trans_funs(self):
         K = self.dynamics.params.K
@@ -37,7 +39,6 @@ class TransverseLinearization:
         M = sp.Matrix([[(hip_mass + 5/4 * leg_mass + torso_mass)* leg_length**2, - 1/2 * leg_mass * leg_length**2 * sp.cos(q1 - q2), torso_mass * leg_length * torso_com * sp.cos(q1 - q3)],
                        [-1/2*leg_mass* leg_length**2 * sp.cos(q1 - q2), 1/4 * leg_mass * leg_length**2, 0],
                        [torso_mass * leg_length * torso_com * sp.cos(q1 - q3), 0, torso_mass * torso_com**2]])
-        self.sym_M = M
 
         C = sp.Matrix([[  0, - 1/2 * leg_mass * leg_length**2 *sp.sin(q1-q2) * dq2, torso_mass*leg_length*torso_com*sp.sin(q1 -q3)*dq3],
                        [  1/2 * leg_mass * leg_length**2 *sp.sin(q1-q2) * dq1, 0, 0],
@@ -141,9 +142,6 @@ class TransverseLinearization:
         _R1_pttp = sp.lambdify([q1, dq1, y1, y2, dy1, dy2, phi2, phi3, phi2_p, phi3_p, phi2_pp, phi3_pp], R1)
         self.R1 = lambda theta, dtheta, y1, y2, dy1, dy2: _R1_pttp(theta, dtheta, y1, y2, dy1, dy2, *self.constraints(theta)[0:6])
 
-        #TODO выполнить замену, чтобы оставить зависимость только от q1, dq1, y1, dy1, y2, dy2
-        #TODO взять частные производные и получить функции для линеаризации
-
         # print(full_expression)
         # print(alpha * ddq1 + beta * dq1**2 + gamma)
 
@@ -213,46 +211,40 @@ class TransverseLinearization:
         leg_length = self.dynamics.params.leg_length
         gravity_acceleration =  self.dynamics.params.gravity_acceleration
 
-        q1, q2, q3 = sp.symbols('q1 q2 q3')
-        dq1, dq2, dq3 = sp.symbols('dq1 dq2 dq3')
-        ddq1, ddq2, ddq3 = sp.symbols('ddq1 ddq2 ddq3')
-        v = sp.symbols('v')
+        theta_m = self.constraints.theta[-1]
+        dtheta_m = self.trajectory.theta_sp(theta_m)[0]
+        state_m = np.array([theta_m, self.constraints(theta_m)[0], self.constraints(theta_m)[1], dtheta_m, self.constraints(theta_m)[2] * dtheta_m, self.constraints(theta_m)[3]*dtheta_m])
+        print(state_m)
 
-        y1, y2, dy1, dy2, ddy1, ddy2 = sp.symbols('y1 y2 dy1 dy2 ddy1 ddy2')
-        phi2, phi3, phi2_p, phi3_p, phi2_pp, phi3_pp = sp.symbols('phi_2 phi_3 phi_2\' phi_3\' phi_2\'\' phi_3\'\'')
+        delta = 0.001
+        df = np.zeros((6,6))
 
-        E = sp.Matrix([[ leg_length * sp.cos(q1), - leg_length * sp.cos(q2), 0, 1, 0],
-                       [-leg_length * sp.sin(q1),   leg_length * sp.sin(q2), 0, 0, 1]])
+        for i in range(state_m.shape[0]):
+            state_m_tmp_p = state_m.copy()
+            state_m_tmp_m = state_m.copy()
+            state_m_tmp_p[i] += delta 
+            state_m_tmp_m[i] -= delta
+            df[:, i] = (self.dynamics.impact(state_m_tmp_p, 0)[0] - self.dynamics.impact(state_m_tmp_m, 0)[0])/ (2*delta)
 
+        np.set_printoptions(precision=3)
+        # print(df)
 
-        Me11 = self.sym_M
-        Me12 = sp.Matrix.zeros(3,2)
+        theta_p = self.constraints.theta[0]
+        dtheta_p = self.trajectory.theta_sp(theta_p)[0]
 
-        Me12[0,0] =   (1.5 * leg_mass +  hip_mass + torso_mass) * leg_length * sp.cos(q1) #De14
-        Me12[0,1] = - (1.5 * leg_mass +  hip_mass + torso_mass) * leg_length * sp.sin(q1) #De15
-        Me12[1,0] = - 0.5 * leg_mass * leg_length * sp.cos(q2) #De24
-        Me12[1,1] =   0.5 * leg_mass * leg_length * sp.sin(q2)#De25
-        Me12[2,0] =   torso_mass * torso_com * sp.cos(q3)#De34
-        Me12[2,1] = - torso_mass * torso_com * sp.sin(q3)#De35
+        P_m = np.zeros((6,5))
+        P_p = np.zeros((5,6))
 
-        Me22 = sp.Matrix.zeros(2,2)
+        P_m[1,1] = P_m[2,2] = P_m[4,3] = P_m[5,4] = 1
+        P_m[3,0] = 1 / (2 * dtheta_m)
 
-        Me22[0,0] = \
-        Me22[1,1] = 2 * leg_mass + hip_mass + torso_mass #De44, De55
+        P_p[1, 1] = P_p[2, 2] = P_p[3, 4] = P_p[4, 5] = 1
+        P_p[0, 3] = 2 * dtheta_p
+        P_p[0, 0] = (self.get_integral(theta_p + delta, dtheta_p) - self.get_integral(theta_p - delta, dtheta_p)) / (2*delta)
 
-        # Me = sp.block([[Me11, Me12],[Me12.T, Me22]])
-        Me = sp.Matrix.zeros(5,5)
-        Me[0:3,0:3] = Me11
-        Me[0:3,3:5] = Me12
-        Me[3:5,0:3] = Me12.T
-        Me[3:5,3:5] = Me22
+        self.L = P_p @ df @ P_m
 
-        Fi = sp.Matrix.zeros(7,7)
-        Fi[0:5, 0:5] =   Me
-        Fi[0:5, 5:7] = - E.T
-        Fi[5:7, 0:5] =   E
-
-        F = Fi.inv()
+        print(self.L)
 
         
     
@@ -270,18 +262,90 @@ class TransverseLinearization:
         A = np.transpose(A, (1,2,0))
         B = np.transpose(B, (1,2,0))
 
-        sio.savemat("matrix.mat", {'t':self.trajectory.t, 'A':A, 'B':B})  
+        sio.savemat("matrixL.mat", {'t':self.trajectory.t, 'A':A, 'B':B, 'Lin_mat': self.L})  
 
-        P_real = sio.loadmat("fbcoeffs.mat")['P_real']
+        # P_real = sio.loadmat("fbcoeffsL.mat")['P_real']
+        K_real = sio.loadmat("fbcoeffsLLK.mat")['K_real']
         K = np.zeros((len(self.trajectory.t), 1, 5))
         for i in range(len(self.trajectory.t)):
-            K[i] = B[:, :, i].T @ P_real[:,:,i]
+            # K[i] = B[:, :, i].T @ P_real[:,:,i]
+            K[i] = - K_real[:,:,i]
         
         #TODO сделать сохранение в файл и, если уже существует, просто загружать из файлаы
 
         # print(K[0])
         return K
+    
+    def _init_psi(self):
+
+        Psi_list = []
+
+        def rhs(th):
+            return 2 * self.beta(th) / self.alpha(th)
+        
+        for theta in self.trajectory.theta:
+            Psi_list.append(np.exp( - scipy.integrate.quad(rhs, self.trajectory.theta[0], theta)[0]))
+    
+
+        Psi = scipy.interpolate.make_interp_spline(self.trajectory.theta, Psi_list, 5)
+        Psi.extrapolate = 'extrapolate'
+        self.Psi = Psi
+
+    def _init_part(self):
+
+        Part_list = []
+
+        def rhs(th):
+            return 2 * self.gamma(th) / (self.alpha(th) * self.Psi(th))
+        
+        for theta in self.trajectory.theta:
+            Part_list.append(scipy.integrate.quad(rhs, self.trajectory.theta[0], theta)[0])
+        
+        Part = scipy.interpolate.make_interp_spline(self.trajectory.theta, Part_list, 5)
+        # print(result.y[0])
+        Part.extrapolate = 'extrapolate'
+        self.Part = Part
+
+    def get_integral(self, theta, dtheta):
+        return dtheta**2 - self.Psi(theta) * (self.trajectory.dtheta[0]**2  - self.Part(theta))
 
   
 
+#         q1, q2, q3 = sp.symbols('q1 q2 q3')
+#         dq1, dq2, dq3 = sp.symbols('dq1 dq2 dq3')
+#         ddq1, ddq2, ddq3 = sp.symbols('ddq1 ddq2 ddq3')
+#         v = sp.symbols('v')
 
+#         y1, y2, dy1, dy2, ddy1, ddy2 = sp.symbols('y1 y2 dy1 dy2 ddy1 ddy2')
+#         phi2, phi3, phi2_p, phi3_p, phi2_pp, phi3_pp = sp.symbols('phi_2 phi_3 phi_2\' phi_3\' phi_2\'\' phi_3\'\'')
+
+#         E = sp.Matrix([[ leg_length * sp.cos(q1), - leg_length * sp.cos(q2), 0, 1, 0],
+#                        [-leg_length * sp.sin(q1),   leg_length * sp.sin(q2), 0, 0, 1]])
+
+
+#         Me11 = self.sym_M
+#         Me12 = sp.Matrix.zeros(3,2)
+
+#         Me12[0,0] =   (1.5 * leg_mass +  hip_mass + torso_mass) * leg_length * sp.cos(q1) #De14
+#         Me12[0,1] = - (1.5 * leg_mass +  hip_mass + torso_mass) * leg_length * sp.sin(q1) #De15
+#         Me12[1,0] = - 0.5 * leg_mass * leg_length * sp.cos(q2) #De24
+#         Me12[1,1] =   0.5 * leg_mass * leg_length * sp.sin(q2)#De25
+#         Me12[2,0] =   torso_mass * torso_com * sp.cos(q3)#De34
+#         Me12[2,1] = - torso_mass * torso_com * sp.sin(q3)#De35
+
+#         Me22 = sp.Matrix.zeros(2,2)
+
+#         Me22[0,0] = \
+#         Me22[1,1] = 2 * leg_mass + hip_mass + torso_mass #De44, De55
+
+#         # Me = sp.block([[Me11, Me12],[Me12.T, Me22]])
+#         Me = sp.Matrix.zeros(5,5)
+#         Me[0:3,0:3] = Me11
+#         Me[0:3,3:5] = Me12
+#         Me[3:5,0:3] = Me12.T
+#         Me[3:5,3:5] = Me22
+
+#         Ti = sp.Matrix.zeros(7,7)
+#         Ti[0:5, 0:5] =   Me
+#         Ti[0:5, 5:7] = - E.T
+#         Ti[5:7, 0:5] =   E

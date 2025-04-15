@@ -31,6 +31,6 @@ if __name__ == "__main__":
 
     feedback = Feedback(System['transverse_linearization'])
     sim = BipedSimulator(System['parameters'], feedback)
-    result = sim.run(state_plus, 0, 3.0)
+    result = sim.run(state_plus, 0, 20.0)
     animate(result.trajectory, redraw_flag=1)
 

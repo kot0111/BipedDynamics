@@ -114,6 +114,9 @@ class BipedSimulator:
             integrator.set_integrator('dopri5', max_step=self.step)
 
             while True:
+                
+                ddq = rhs(0, self.state)
+
                 if not integrator.successful():
                     print('[warn] integrator doesn\'t feel good at t = ', self.t)
 
@@ -147,6 +150,12 @@ class BipedSimulator:
 
                 self.u = float(u_delayed)
 
+                solx[-1] = np.concatenate((solx[-1], ddq[3:6]))
+
+                # print(solx[-1])
+                # print(ddq)
+                # input()
+
                 solt.append(self.t)
                 solx.append(self.state.copy())
                 solu.append(self.u)
@@ -156,6 +165,8 @@ class BipedSimulator:
                     solfb.append(np.copy(self.fb.state))
 
                 if((self.state[0] > 0) and (self.state[0] + self.state[1] > 0)):
+                    ddq = rhs(0, self.state)
+                    solx[-1] = np.concatenate((solx[-1], ddq[3:6]))
                     break
 
             self.state, self.pivot = self.dynamics.impact(self.state, self.pivot)
@@ -165,6 +176,9 @@ class BipedSimulator:
             solx.append(self.state.copy())
             solu.append(self.u)
             pivot.append(self.pivot)
+
+            ddq = rhs(0, self.state)
+            solx[-1] = np.concatenate((solx[-1], ddq[3:6]))
 
             if hasattr(self.fb, 'state'):
                 solfb.append(np.copy(self.fb.state))

@@ -66,8 +66,12 @@ class PhaseTrajectory:
         else:
             self.pivot = np.zeros((len(self.t),))
 
-        if 'ddq1' in kwargs:
-            self.theta_sp = sp.interpolate.make_interp_spline(self.phase[:,0], self.phase[:, [3,6]], k=5)
+        
+        self.theta_sp = sp.interpolate.make_interp_spline(self.phase[:,0], self.phase[:, [3,6]], k=5)
+
+    @property
+    def trajectory(self):
+        return self.phase[:,0:6]
 
     @property
     def theta(self):
