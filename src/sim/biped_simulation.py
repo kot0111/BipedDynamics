@@ -92,7 +92,7 @@ class BipedSimulator:
         # self.motor_delay.set_initial_value(self.t, 0.)
         self.disturbed_output = np.array([q10, q20, q30])
 
-    def run(self, initial_state : np.ndarray, tstart : float, tend : float) -> PhaseTrajectory:
+    def run(self, initial_state : np.ndarray, tstart : float, tend : float, get_last_step : bool  = False) -> SimulationResult:
         self.__init_disturbed_output(tstart, initial_state)
         self.u = float(self.fb(self.t, self.disturbed_output, self.state))
         self.pivot = 0
@@ -107,7 +107,12 @@ class BipedSimulator:
         else:
             solfb = None
 
+        n_last_step_start = 0
+
         while self.t < tend - self.step:
+
+            if get_last_step:
+                n_last_step_start = len(solt) - 1
 
             integrator = ode(rhs)
             integrator.set_initial_value(self.state, self.t)
@@ -171,18 +176,51 @@ class BipedSimulator:
 
             self.state, self.pivot = self.dynamics.impact(self.state, self.pivot)
 
+            if self.t < tend - self.step:
+
+                solt.append(self.t)
+                solx.append(self.state.copy())
+                solu.append(self.u)
+                pivot.append(self.pivot)
+
+                if hasattr(self.fb, 'state'):
+                    solfb.append(np.copy(self.fb.state))
+
+        # ddq = rhs(0, self.state)
+        # solx[-1] = np.concatenate((solx[-1], ddq[3:6]))
+
+        # print(solx[-10:])
+
+        gap = 1
+
+        if get_last_step:
+            gap = len(solt[n_last_step_start:]) // 150
             
-            solt.append(self.t)
-            solx.append(self.state.copy())
-            solu.append(self.u)
-            pivot.append(self.pivot)
+        # print(gap)
+        last_not_in_array =  bool(len(solt[n_last_step_start:]) % gap)
 
-            ddq = rhs(0, self.state)
-            solx[-1] = np.concatenate((solx[-1], ddq[3:6]))
+        t = solt[-1]
+        x = solx[-1].copy()
+        u = solu[-1]
+        piv = pivot[-1]
 
-            if hasattr(self.fb, 'state'):
-                solfb.append(np.copy(self.fb.state))
+        solt = solt[n_last_step_start::gap]
+        solx = solx[n_last_step_start::gap]
+        solu = solu[n_last_step_start::gap]
+        pivot = pivot[n_last_step_start::gap]
 
+        if last_not_in_array:
+            solt.append(t)
+            solx.append(x.copy())
+            solu.append(u)
+            pivot.append(piv)
+
+        if hasattr(self.fb, 'state'):
+            fb = solfb[-1].copy()
+            solfb = solfb[n_last_step_start::gap]
+            if last_not_in_array:
+                solfb.append(fb.copy())
+        
         result = SimulationResult(
             trajectory = PhaseTrajectory(
                 t = np.asanyarray(solt),

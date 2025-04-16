@@ -158,41 +158,65 @@ class BipedDynamics:
     
     
 class Constraints:
-    def __init__(self, dynamics: BipedDynamics, first_initial_state, opt=True):
+    def __init__(self, dynamics: BipedDynamics, opt=True, **kwargs):
 
         self.dynamics = dynamics
 
-        initial_state = first_initial_state
+        if 'first_initial_state' in kwargs:
+            first_initial_state = np.copy(kwargs['first_initial_state'])
 
-        if (opt == True):
-            solved_state = self._optimize_trajectory(first_initial_state)
+            initial_state = first_initial_state
 
-            print(solved_state.success)
-            print(solved_state.x)
-            initial_state = solved_state.x
+            if (opt == True):
+                solved_state = self._optimize_trajectory(first_initial_state)
 
-        self.initial_state = initial_state
-        
-        t, y = self._get_trajectory(initial_state)
+                print(solved_state.success)
+                print(solved_state.x)
+                initial_state = solved_state.x
 
-        # fig, ( ax2, ax3) = plt.subplots(1,2)
-        # ax1.plot(t, y[6])
-        # ax1.grid(True)
-        # ax1.set_ylabel(r'$\tau$ [Nm]')
-        # ax1.set_xlabel(r'$q_1 = \theta$ [rad]')
-        # ax1.set_title(r'Torque')
+            self.initial_state = initial_state
+            
+            t, y = self._get_trajectory(initial_state)
 
-        # ax2.plot(t, y[0])
-        # ax2.grid(True)
-        # ax2.set_ylabel(r'$q_2$ [rad]')
-        # ax2.set_xlabel(r'$q_1 = \theta$ [rad]')
-        # ax2.set_title(r'Swing leg')
+        elif 'phase_trajectory' in kwargs:
 
-        # ax3.plot(t, y[1])
-        # ax3.grid(True)
-        # ax3.set_ylabel(r'$q_3$ [rad]')
-        # ax3.set_xlabel(r'$q_1 = \theta$ [rad]')
-        # ax3.set_title(r'Torso')
+            phase_trajectory = kwargs['phase_trajectory']
+
+            #TODO Проверить корректность 
+
+            t = phase_trajectory.theta
+            u = phase_trajectory.feed_forward
+            q = phase_trajectory.q
+            dq = phase_trajectory.dq
+            ddq = phase_trajectory.ddq
+
+            qp = dq / dq[:, [0]]
+            qpp = (ddq - qp * ddq[:, [0]]) / (dq[:, [0]] ** 2)
+    
+            y = np.concatenate((q[:, 1:], qp[:,1:], qpp[:,1:], np.reshape(u, (-1,1))), 1).T
+
+            self.initial_state = [self.dynamics.params.K, q[0,0], q[0,2], dq[0,0], qp[0,1], qp[0,2], u[0]]
+
+
+
+        fig, ( ax1, ax2, ax3) = plt.subplots(1,3)
+        ax1.plot(t, y[6])
+        ax1.grid(True)
+        ax1.set_ylabel(r'$\tau$ [Nm]')
+        ax1.set_xlabel(r'$q_1 = \theta$ [rad]')
+        ax1.set_title(r'Torque')
+
+        ax2.plot(t, y[0])
+        ax2.grid(True)
+        ax2.set_ylabel(r'$q_2$ [rad]')
+        ax2.set_xlabel(r'$q_1 = \theta$ [rad]')
+        ax2.set_title(r'Swing leg')
+
+        ax3.plot(t, y[1])
+        ax3.grid(True)
+        ax3.set_ylabel(r'$q_3$ [rad]')
+        ax3.set_xlabel(r'$q_1 = \theta$ [rad]')
+        ax3.set_title(r'Torso')
 
         # ax2.plot(y[0], y[2])
         # ax2.grid(True)
@@ -206,7 +230,7 @@ class Constraints:
         # ax3.set_xlabel(r'$q_3$ [rad]')
         # ax3.set_title(r'Torso')
         
-        # plt.show()
+        plt.show()
         
         self.spline = sp.interpolate.make_interp_spline(t, y.T, k=5)
         self.theta = t

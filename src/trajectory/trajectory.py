@@ -66,8 +66,10 @@ class PhaseTrajectory:
         else:
             self.pivot = np.zeros((len(self.t),))
 
-        
-        self.theta_sp = sp.interpolate.make_interp_spline(self.phase[:,0], self.phase[:, [3,6]], k=5)
+        if ((self.phase[:,0] == np.sort(self.phase[:,0])[::-1]).all() or (self.phase[:,0] == np.sort(self.phase[:,0])).all()) and np.size(self.phase,1) > 6:
+            self.theta_sp = sp.interpolate.make_interp_spline(self.phase[:,0], self.phase[:, [3,6]], k=5)
+
+        # print(self.phase.shape)
 
     @property
     def trajectory(self):
@@ -92,3 +94,7 @@ class PhaseTrajectory:
     @property
     def ddq(self):
         return self.phase[:,6:9]
+    
+    @property
+    def feed_forward(self):
+        return self.u

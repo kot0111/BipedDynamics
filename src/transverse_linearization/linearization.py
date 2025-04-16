@@ -7,7 +7,12 @@ from dynamics.biped_dynamics import BipedDynamics, Constraints
 from trajectory.trajectory import PhaseTrajectory
 
 class TransverseLinearization:
+
+    class_counter = -1
+
     def __init__(self, trj : PhaseTrajectory, constr : Constraints, d : BipedDynamics):
+
+        TransverseLinearization.class_counter += 1
         
         self.dynamics = d
         self.constraints = constr
@@ -183,7 +188,12 @@ class TransverseLinearization:
         self.ab = ab
 
     def matrix(self, i):
+
         theta = self.trajectory.theta[i]
+
+        # print(self.constraints.theta.shape)
+        # print(self.trajectory.theta.shape)
+        # input()
 
         A = np.zeros((5,5))
         B = np.zeros((5,1))
@@ -214,7 +224,7 @@ class TransverseLinearization:
         theta_m = self.constraints.theta[-1]
         dtheta_m = self.trajectory.theta_sp(theta_m)[0]
         state_m = np.array([theta_m, self.constraints(theta_m)[0], self.constraints(theta_m)[1], dtheta_m, self.constraints(theta_m)[2] * dtheta_m, self.constraints(theta_m)[3]*dtheta_m])
-        print(state_m)
+        # print(state_m)
 
         delta = 0.001
         df = np.zeros((6,6))
@@ -244,7 +254,7 @@ class TransverseLinearization:
 
         self.L = P_p @ df @ P_m
 
-        print(self.L)
+        # print(self.L)
 
         
     
@@ -262,10 +272,10 @@ class TransverseLinearization:
         A = np.transpose(A, (1,2,0))
         B = np.transpose(B, (1,2,0))
 
-        sio.savemat("matrixL.mat", {'t':self.trajectory.t, 'A':A, 'B':B, 'Lin_mat': self.L})  
+        sio.savemat("matrixL" + "Iter" * TransverseLinearization.class_counter +".mat", {'t':self.trajectory.t, 'A':A, 'B':B, 'Lin_mat': self.L})  
 
         # P_real = sio.loadmat("fbcoeffsL.mat")['P_real']
-        K_real = sio.loadmat("fbcoeffsLLK.mat")['K_real']
+        K_real = sio.loadmat("fbcoeffsLLK" + "Iter" * TransverseLinearization.class_counter +".mat")['K_real']
         K = np.zeros((len(self.trajectory.t), 1, 5))
         for i in range(len(self.trajectory.t)):
             # K[i] = B[:, :, i].T @ P_real[:,:,i]
