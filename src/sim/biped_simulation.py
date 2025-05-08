@@ -7,9 +7,9 @@ from trajectory.trajectory import PhaseTrajectory
 from scipy.integrate import ode
 from dataclasses import dataclass
 
-def animate(trj : PhaseTrajectory, redraw_flag = 0):
+def animate(trj : PhaseTrajectory, params : BipedParameters, redraw_flag = 0):
     fig = plt.figure(figsize=(5,4))
-    ax = fig.add_subplot(autoscale_on=False, xlim=(-2.,2.), ylim=(-0.1, 2.0))
+    ax = fig.add_subplot(autoscale_on=False, xlim=(-2.,2.), ylim=(-0.1, 1.6))
     ax.set_aspect('equal')
     ax.grid()
 
@@ -19,14 +19,17 @@ def animate(trj : PhaseTrajectory, redraw_flag = 0):
     time_template = 'time = %.2fs'
     time_text = ax.text(0.045, 0.9, '', transform=ax.transAxes)
 
+    leg_lenght = params.leg_length
+    torso_lenght = params.torso_com
+
     q1, q2, q3 = trj.q.T
 
-    x1 = trj.pivot * redraw_flag + np.sin(q1)
-    y1 = np.cos(q1)
-    x2 = x1 - np.sin(q2)
-    y2 = y1 - np.cos(q2)
-    x3 = x1 + np.sin(q3)
-    y3 = y1 + np.cos(q3)
+    x1 = trj.pivot * redraw_flag + leg_lenght * np.sin(q1)
+    y1 = leg_lenght * np.cos(q1)
+    x2 = x1 - leg_lenght * np.sin(q2)
+    y2 = y1 - leg_lenght * np.cos(q2)
+    x3 = x1 + torso_lenght * np.sin(q3)
+    y3 = y1 + torso_lenght * np.cos(q3)
 
     interv = int((trj.t[10] - trj.t[9]) * 1000)
     if interv < 5:
@@ -66,11 +69,13 @@ class SimulationResult:
     controller_internal_state : list = None
 
 class BipedSimulator:
-    def __init__(self, bippr : BipedParameters, fb : callable):
+    def __init__(self, bippr : BipedParameters, fb : callable, matched_dist : callable = None):
         self.dynamics = BipedDynamics(bippr)
         self.fb = fb
         self.step = 1e-3
         self.t = None
+        if matched_dist is not None:
+            self.matched_dist = matched_dist
 
     def __update_disturbed_output(self):
         q1,q2,q3,_,_,_ = self.state
@@ -93,10 +98,17 @@ class BipedSimulator:
         self.disturbed_output = np.array([q10, q20, q30])
 
     def run(self, initial_state : np.ndarray, tstart : float, tend : float, get_last_step : bool  = False) -> SimulationResult:
+       
         self.__init_disturbed_output(tstart, initial_state)
         self.u = float(self.fb(self.t, self.disturbed_output, self.state))
         self.pivot = 0
-        rhs = lambda _, x: self.dynamics.rhs_fun(x, self.u)
+
+        if hasattr(self, 'matched_dist'):
+            self.noise = float(self.matched_dist(self.t))
+        else:
+            self.noise = 0.0
+        
+        rhs = lambda _, x: self.dynamics.rhs_fun(x, self.u + self.noise)
 
         solt = [self.t]
         solx = [self.state]
@@ -154,6 +166,7 @@ class BipedSimulator:
                 #     u_delayed -= self.motor_dry_friction * np.sign(dtheta)
 
                 self.u = float(u_delayed)
+                self.noise = float(self.matched_dist(self.t)) if hasattr(self, 'matched_dist') else 0.0
 
                 solx[-1] = np.concatenate((solx[-1], ddq[3:6]))
 
@@ -185,6 +198,7 @@ class BipedSimulator:
 
                 if hasattr(self.fb, 'state'):
                     solfb.append(np.copy(self.fb.state))
+                    self.fb.state = None
 
         # ddq = rhs(0, self.state)
         # solx[-1] = np.concatenate((solx[-1], ddq[3:6]))

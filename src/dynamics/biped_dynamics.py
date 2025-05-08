@@ -197,26 +197,26 @@ class Constraints:
 
             self.initial_state = [self.dynamics.params.K, q[0,0], q[0,2], dq[0,0], qp[0,1], qp[0,2], u[0]]
 
+        fs =18
 
-
-        fig, ( ax1, ax2, ax3) = plt.subplots(1,3)
+        fig, ( ax1, ax2, ax3) = plt.subplots(1,3, figsize=(16,4))
         ax1.plot(t, y[6])
         ax1.grid(True)
-        ax1.set_ylabel(r'$\tau$ [Nm]')
-        ax1.set_xlabel(r'$q_1 = \theta$ [rad]')
-        ax1.set_title(r'Torque')
+        ax1.set_ylabel(r'u [Nm]', fontsize=fs)
+        ax1.set_xlabel(r'$q_1 = \theta$ [rad]', fontsize=fs)
+        ax1.set_title(r'Torque', fontsize=fs)
 
         ax2.plot(t, y[0])
         ax2.grid(True)
-        ax2.set_ylabel(r'$q_2$ [rad]')
-        ax2.set_xlabel(r'$q_1 = \theta$ [rad]')
-        ax2.set_title(r'Swing leg')
+        ax2.set_ylabel(r'$q_2$ [rad]', fontsize=fs)
+        ax2.set_xlabel(r'$q_1 = \theta$ [rad]', fontsize=fs)
+        ax2.set_title(r'Swing leg', fontsize=fs)
 
         ax3.plot(t, y[1])
         ax3.grid(True)
-        ax3.set_ylabel(r'$q_3$ [rad]')
-        ax3.set_xlabel(r'$q_1 = \theta$ [rad]')
-        ax3.set_title(r'Torso')
+        ax3.set_ylabel(r'$q_3$ [rad]', fontsize=fs)
+        ax3.set_xlabel(r'$q_1 = \theta$ [rad]', fontsize=fs)
+        ax3.set_title(r'Torso', fontsize=fs)
 
         # ax2.plot(y[0], y[2])
         # ax2.grid(True)
@@ -229,6 +229,15 @@ class Constraints:
         # ax3.set_ylabel(r"$q_3'$")
         # ax3.set_xlabel(r'$q_3$ [rad]')
         # ax3.set_title(r'Torso')
+
+        ax1.text(-0.1,-0.2, "a)", size=fs, ha="center", 
+         transform=ax1.transAxes)
+        ax2.text(-0.1,-0.2, "b)", size=fs, ha="center", 
+         transform=ax2.transAxes)
+        ax3.text(-0.1,-0.2, "c)", size=fs, ha="center", 
+         transform=ax3.transAxes)
+
+        fig.tight_layout(pad = 1.0)
         
         plt.show()
         

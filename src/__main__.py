@@ -3,7 +3,8 @@ from dynamics.biped_dynamics import BipedDynamics, Constraints
 from trajectory.trajectory import PhaseTrajectory, get_trajectory
 from sim.biped_simulation import animate, BipedSimulator
 from transverse_linearization.linearization import TransverseLinearization
-from feedback.feedback import Feedback
+from feedback.feedback import Feedback, ISMFeedback
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     feedback = Feedback(System['transverse_linearization'])
     sim = BipedSimulator(System['parameters'], feedback)
     result = sim.run(state_plus, 0, 20.0, get_last_step=True)
-    animate(result.trajectory, redraw_flag=1)
+    animate(result.trajectory, System['parameters'],redraw_flag=1)
 
     # ONE MORE TIME
 
@@ -43,8 +44,23 @@ if __name__ == "__main__":
     K, theta, phi3, theta_dot, phi2_prime, phi3_prime, u = System['constraints'].initial_state
     state_plus = np.array([theta, -theta, phi3, theta_dot, phi2_prime * theta_dot, phi3_prime * theta_dot])
 
-    feedback = Feedback(System['transverse_linearization'])
-    sim = BipedSimulator(System['parameters'], feedback)
-    result = sim.run(state_plus, 0, 20.0, get_last_step=False)
-    animate(result.trajectory, redraw_flag=1)
+    # System['parameters_mod'] = load_biped_parameters("biped_mod.json")
 
+    noise = lambda t: np.sin(t)
+
+    # feedback = Feedback(System['transverse_linearization'])
+    # sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise)
+    # result = sim.run(state_plus, 0, 20.0, get_last_step=False)
+    # animate(result.trajectory, System['parameters_mod'],redraw_flag=1)
+
+    feedback = ISMFeedback(System['transverse_linearization'])
+    sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise)
+    result = sim.run(state_plus, 0, 20.0, get_last_step=False)
+    animate(result.trajectory, System['parameters_mod'],redraw_flag=1)
+
+    fig, (ax) = plt.subplots()
+    ax.plot(result.trajectory.t, result.trajectory.feed_forward)
+    ax.set_ylabel(r'$\tau$ [Nm]')
+    ax.set_xlabel(r'$q_1 = \theta$ [rad]')
+    ax.set_title(r'Torque')
+    plt.show()

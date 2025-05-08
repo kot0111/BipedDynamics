@@ -1,0 +1,9 @@
+{
+	"leg_mass": 5.1,
+    "hip_mass": 15,
+    "torso_mass": 10,
+    "leg_length": 1,
+    "leg_com": 0.5,
+    "torso_com": 0.5,
+    "gravity_acceleration": 9.81
+}

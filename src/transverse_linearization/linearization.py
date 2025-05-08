@@ -2,6 +2,7 @@ import sympy as sp
 import numpy as np
 import scipy.io as sio
 import scipy
+import os.path
 
 from dynamics.biped_dynamics import BipedDynamics, Constraints
 from trajectory.trajectory import PhaseTrajectory
@@ -260,19 +261,20 @@ class TransverseLinearization:
     
     def mat_file(self):
 
+        if not os.path.exists("fbcoeffsLLK" + "Iter" * TransverseLinearization.class_counter +".mat"):
 
-        n = len(self.trajectory.t)
-        A = np.zeros((n, 5, 5))
-        B = np.zeros((n, 5, 1))
-        L = np.zeros((5, 5))
+            n = len(self.trajectory.t)
+            A = np.zeros((n, 5, 5))
+            B = np.zeros((n, 5, 1))
+            L = np.zeros((5, 5))
 
-        for i in range(n):
-            A[i], B[i] = self.matrix(i)
+            for i in range(n):
+                A[i], B[i] = self.matrix(i)
 
-        A = np.transpose(A, (1,2,0))
-        B = np.transpose(B, (1,2,0))
+            A = np.transpose(A, (1,2,0))
+            B = np.transpose(B, (1,2,0))
 
-        sio.savemat("matrixL" + "Iter" * TransverseLinearization.class_counter +".mat", {'t':self.trajectory.t, 'A':A, 'B':B, 'Lin_mat': self.L})  
+            sio.savemat("matrixL" + "Iter" * TransverseLinearization.class_counter +".mat", {'t':self.trajectory.t, 'A':A, 'B':B, 'Lin_mat': self.L})  
 
         # P_real = sio.loadmat("fbcoeffsL.mat")['P_real']
         K_real = sio.loadmat("fbcoeffsLLK" + "Iter" * TransverseLinearization.class_counter +".mat")['K_real']
