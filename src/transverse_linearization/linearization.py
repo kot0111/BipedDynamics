@@ -283,7 +283,6 @@ class TransverseLinearization:
             # K[i] = B[:, :, i].T @ P_real[:,:,i]
             K[i] = - K_real[:,:,i]
         
-        #TODO сделать сохранение в файл и, если уже существует, просто загружать из файлаы
 
         # print(K[0])
         return K

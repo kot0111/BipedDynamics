@@ -144,7 +144,6 @@ class BipedDynamics:
         B = self.__eval_B(state)
         return M, C, G, B
     
-    #TODO Проверить
     def rhs_fun(self, state, u):
 
         M, C, G, B = self.dynamics(state)
@@ -165,10 +164,17 @@ class Constraints:
         if 'first_initial_state' in kwargs:
             first_initial_state = np.copy(kwargs['first_initial_state'])
 
+            if 'method' in kwargs:
+                self.method = kwargs['method']
+            else:
+                self.method = 'TNC'
+            
+
+
             initial_state = first_initial_state
 
             if (opt == True):
-                solved_state = self._optimize_trajectory(first_initial_state)
+                solved_state = self._optimize_trajectory(first_initial_state, method = self.method)
 
                 print(solved_state.success)
                 print(solved_state.x)
@@ -181,8 +187,6 @@ class Constraints:
         elif 'phase_trajectory' in kwargs:
 
             phase_trajectory = kwargs['phase_trajectory']
-
-            #TODO Проверить корректность 
 
             t = phase_trajectory.theta
             u = phase_trajectory.feed_forward
@@ -242,11 +246,9 @@ class Constraints:
         plt.show()
         
         self.spline = sp.interpolate.make_interp_spline(t, y.T, k=5)
-        self.theta = t
-
+        self.theta = t   
         
-        
-    def _optimize_trajectory(self, chi_approximation):
+    def _optimize_trajectory(self, chi_approximation, method = 'TNC'):
 
         def functional(init_state):
 
@@ -256,21 +258,23 @@ class Constraints:
 
             th, y = self._get_trajectory(init_state)
 
-            theta_dot_minus = np.sqrt(np.mean(self._getD2array(th[-1], y[:,-1])))
+            theta_dot_minus = np.sqrt(max(np.mean(self._getD2array(th[-1], y[:,-1])),0.1))
 
             state_minus = np.array([th[-1], y[0,-1], y[1,-1], theta_dot_minus, theta_dot_minus * y[2,-1],  theta_dot_minus * y[3,-1]])
 
             new_state_plus, _pivot = self.dynamics.impact(state_minus, (0,0))
 
+            print("Initial state:", init_state)
             print(state_plus)
             print(new_state_plus)
+            print(np.linalg.norm(state_plus - new_state_plus))
             print()
 
             return np.linalg.norm(state_plus - new_state_plus)
         
-        bnds = ((0, None), (-0.5, 0), (0, None), (0, None), (None, None), (0, None), (0, None))
+        bnds = ((10, 50), (-0.4, -0.2), (0, None), (0.1, None), (None, None), (0, None), (None, None))
         
-        res = sp.optimize.minimize(functional, chi_approximation, bounds=bnds)
+        res = sp.optimize.minimize(functional, chi_approximation, bounds=bnds, tol=1e-5, method =method)
         
         print("Results:")
         test = functional(res.x)
@@ -279,11 +283,11 @@ class Constraints:
 
         
 
-    def _get_trajectory(self, initial_state, delta = 0.000005):
+    def _get_trajectory(self, initial_state, delta = 0.0000005):
         
         constraints_array = self._get_full_zero_constraints(initial_state)
 
-        def rhs(theta, const_array):
+        def rhs(theta, const_array, epsilon=1e-6):
 
             q2, q3, q2p, q3p, q2pp, q3pp, u = const_array
 
@@ -314,16 +318,53 @@ class Constraints:
 
                 tmp_mat[:, i] =  (self._getD2array(theta, tmp_const_array1) - self._getD2array(theta, tmp_const_array2)) / (2 * delta)
 
-    
+            if np.abs(np.linalg.det(tmp_mat)) < epsilon:
+                status = 0
+                # print("Determinant is too small",  np.linalg.det(tmp_mat))
+                return status, np.array([q2p, q3p, q2pp, q3pp, 0.1, 0, 0])
 
+            status = 1
             q2ppp, q3ppp, up = np.linalg.solve(tmp_mat, 2 * D1 - chi)
 
-            return q2p, q3p, q2pp, q3pp, q2ppp, q3ppp, up
+            return status, np.array([q2p, q3p, q2pp, q3pp, q2ppp, q3ppp, up])
+
+        def wrapped_rhs(t, y):
+            return rhs(t, y)[1]
 
         #TODO Заменить решатель на Эйлера
-        result = sp.integrate.solve_ivp(rhs, [initial_state[1], -initial_state[1]], constraints_array, t_eval=np.linspace(initial_state[1], -initial_state[1], 100), method='RK45')
+        # result = sp.integrate.solve_ivp(wrapped_rhs, [initial_state[1], -initial_state[1]], constraints_array, t_eval=np.linspace(initial_state[1], -initial_state[1], 100), method='RK45')
+        # return result.t, result.y
 
-        return result.t, result.y
+        t, y = self._solve_ivp(rhs, [initial_state[1], -initial_state[1]], np.array(constraints_array), step = 1e-4, epsilon=1e-6)
+        return t, y
+        
+    
+    def _solve_ivp(self, rhs, t_span, y0, step = 1e-4, epsilon=1e-6):
+
+        y_arr = [y0.copy()]
+        t_arr = [t_span[0]]
+
+        t = t_span[0]
+        y = y0
+
+        while t < t_span[1]:
+
+            status_tmp, derivs = rhs(t, y)
+
+            while True:
+                y += derivs * step
+                t += step
+                status, _ = rhs(t, y, epsilon=epsilon)
+                if status ==  1:
+                    break
+            
+            # print(y)
+            # input()
+
+            y_arr.append(y.copy())
+            t_arr.append(t)
+
+        return np.array(t_arr), np.array(y_arr).T
 
     def _getD1array(self, theta, constraints_array):
         alpha, beta, gamma, u = self._abgu_coeffs(theta, constraints_array)
@@ -387,34 +428,11 @@ class Constraints:
         gamma = A @ G[:,0]
 
         return alpha, beta, gamma, (A @ B[:,0]) * u
-    
-    # def _abgu_coeffs_temp(self, theta):
-
-    #     q2, q3, q2p, q3p, q2pp, q3pp, u = self(theta)
-
-    #     Q = [theta, q2, q3]
-    #     Q1 = [1, q2p, q3p]
-    #     Q2 = [0, q2pp, q3pp]
-
-    #     M,C,G,B = self.dynamics.dynamics(Q + Q1)
-
-    #     A = np.array([[1, 1, - 2 * np.cos(theta - q3)]])
-    
-    #     alpha = A @ M @ Q1
-    #     beta = A @ (M @ Q2 + C @ Q1)
-    #     gamma = A @ G[:,0]
-
-    #     return alpha, beta, gamma
 
     def __call__(self, phi, der=0):
         return self.spline(phi, der)
 
 def reduced_dynamics(self, constr: Constraints):
-        def hit_ground(t, y):
-            return np.abs(y[0]) + constr(y[0])[0]
-        hit_ground.terminal = True
-        hit_ground.direction = 1
-
         def rhs(t, st):
             th,dth = st
             B_perp = [1, 0, 0]
@@ -427,6 +445,12 @@ def reduced_dynamics(self, constr: Constraints):
         
 
         initial_state = constr.initial_state
+
+        def hit_ground(t, y):
+            return np.abs(y[0]) + constr(y[0])[0]
+            # return y[0] + initial_state[1]
+        hit_ground.terminal = True
+        hit_ground.direction = 1
         
         t = np.arange(0, 1.00, 0.003)
         sol = sp.integrate.solve_ivp(rhs, [t[0], t[-1]], [initial_state[1], initial_state[3]], t_eval=t, max_step=1e-3, events=hit_ground)

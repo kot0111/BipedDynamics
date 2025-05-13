@@ -124,7 +124,7 @@ class BipedSimulator:
         while self.t < tend - self.step:
 
             if get_last_step:
-                n_last_step_start = len(solt) - 1
+                n_last_step_start = len(solt)
 
             integrator = ode(rhs)
             integrator.set_initial_value(self.state, self.t)
@@ -208,10 +208,14 @@ class BipedSimulator:
         gap = 1
 
         if get_last_step:
-            gap = len(solt[n_last_step_start:]) // 150
+            if len(solt[n_last_step_start:]) > 150:
+                gap = len(solt[n_last_step_start:]) // 150
+            else:
+                print('len(solt[n_last_step_start:]) = ', len(solt[n_last_step_start:]))
             
         # print(gap)
-        last_not_in_array =  bool(len(solt[n_last_step_start:]) % gap)
+        # print((len(solt[n_last_step_start:]) % gap))
+        last_not_in_array =  ((len(solt[n_last_step_start:]) % gap) != 1)
 
         t = solt[-1]
         x = solx[-1].copy()
