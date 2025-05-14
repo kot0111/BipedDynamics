@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     feedback = Feedback(System['transverse_linearization'])
     sim = BipedSimulator(System['parameters'], feedback)
-    result = sim.run(state_plus, 0, 10.0, get_last_step=True)
+    result = sim.run(state_plus, 0, 30.0, get_last_step=True)
     animate(result.trajectory, System['parameters'],redraw_flag=1)
 
     fig, (ax) = plt.subplots()
@@ -48,6 +48,21 @@ if __name__ == "__main__":
     ax.set_title(r'Torque')
     plt.show()
 
+    trcor = np.zeros((len(result.trajectory.t), 5))
+
+    trj = result.trajectory.trajectory
+    for i in range(len(result.trajectory.t)):
+        trcor[i, :] = feedback.get_transverse(trj[i, :])
+
+    fig, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, 1)
+    ax0.plot(result.trajectory.t, trcor[:, 0])
+    ax1.plot(result.trajectory.t, trcor[:, 1])
+    ax2.plot(result.trajectory.t, trcor[:, 2])
+    ax3.plot(result.trajectory.t, trcor[:, 3])
+    ax4.plot(result.trajectory.t, trcor[:, 4])
+    plt.show()
+
+
     # ONE MORE TIME
 
     System['trajectory'] = result.trajectory
@@ -55,16 +70,17 @@ if __name__ == "__main__":
     System['transverse_linearization'] = TransverseLinearization(System['trajectory'], System['constraints'], System['dynamics'])
 
     K, theta, phi3, theta_dot, phi2_prime, phi3_prime, u = System['constraints'].initial_state
-    state_plus = np.array([theta, - theta, phi3, theta_dot, phi2_prime * theta_dot, phi3_prime * theta_dot])
+    state_plus = np.array([0.5 * theta, - 0.5 * theta, phi3, 0.5 * theta_dot, phi2_prime * 0.5 * theta_dot, phi3_prime * 0.5 * theta_dot])
 
     # # System['parameters_mod'] = load_biped_parameters("biped_mod.json")
 
     noise = lambda t: 5 * np.sin(t) + np.sin(10*t) + 3
+    # noise = None
 
     feedback = Feedback(System['transverse_linearization'])
     sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise)
     result1 = sim.run(state_plus, 0, 30.0, get_last_step=False)
-    # animate(result1.trajectory, System['parameters'],redraw_flag=1)
+    animate(result1.trajectory, System['parameters'],redraw_flag=1)
 
     feedback = ISMFeedback(System['transverse_linearization'])
     sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise)
@@ -90,7 +106,7 @@ if __name__ == "__main__":
     for i in range(len(result2.trajectory.t)):
         trcor[i, :] = feedback.get_transverse(trj[i, :])
 
-    fig2, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, 1)
+    # fig2, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, 1)
     ax0.plot(result2.trajectory.t, trcor[:, 0])
     ax1.plot(result2.trajectory.t, trcor[:, 1])
     ax2.plot(result2.trajectory.t, trcor[:, 2])

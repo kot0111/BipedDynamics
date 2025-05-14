@@ -16,13 +16,13 @@ class Feedback:
         self.t_star.extrapolate = 'extrapolate'
 
         self.K = sp.interpolate.make_interp_spline(t, np.reshape(tl.Ku, (-1, 5)), 5)
-        self.K.extrapolate = 'periodic'
+        # self.K.extrapolate = 'periodic'
+
+        self.t_star_arr = []
+        self.K_arr = []
 
         self.th_sp = self.trajectory.theta_sp
         self.th_sp.extrapolate = 'extrapolate'
-
-        self.u_nominal = []
-        self.Ku = []
 
     def get_transverse(self, state):
         theta, q2, q3, dtheta, dq2, dq3 = state
@@ -50,14 +50,13 @@ class Feedback:
         theta = clamp(theta, self.trajectory.theta[0], self.trajectory.theta[-1])
 
         t_star = self.t_star(theta)
+        self.t_star_arr.append(t_star)
+        self.K_arr.append(self.K(t_star))
 
         xp = np.array([self.get_transverse(state)]).T
         v = - self.K(t_star) @ xp / self.tl.N1(theta, 0, 0)
         
         u = v + self.constraints(theta)[6]
-
-        self.u_nominal.append(self.constraints(theta)[6])
-        self.Ku.append(self.K(t_star))
 
         return u
     
@@ -69,10 +68,14 @@ class ISMFeedback:
 
         self.trajectory = tl.trajectory
         theta = self.trajectory.theta
+        t = self.trajectory.t
         dtheta = self.trajectory.dtheta
 
-        self.K = sp.interpolate.make_interp_spline(theta, np.reshape(tl.Ku, (-1, 5)), 5)
-        self.K.extrapolate = 'periodic'
+        self.t_star = sp.interpolate.make_interp_spline(theta, t, 5)
+        self.t_star.extrapolate = 'extrapolate'
+
+        self.K = sp.interpolate.make_interp_spline(t, np.reshape(tl.Ku, (-1, 5)), 5)
+        # self.K.extrapolate = 'periodic'
 
         self.th_sp = self.trajectory.theta_sp
         self.th_sp.extrapolate = 'extrapolate'
@@ -106,8 +109,10 @@ class ISMFeedback:
         clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
         theta = clamp(theta, self.trajectory.theta[0], self.trajectory.theta[-1])
 
+        t_star = self.t_star(theta)
+
         xp = np.array([self.get_transverse(state)]).T
-        v = - self.K(theta) @ xp / self.tl.N1(theta, 0, 0)
+        v = - self.K(t_star) @ xp / self.tl.N1(theta, 0, 0)
 
         # G = np.array([[10,0,0,1,-3]])
         G = np.array([[0,0,0,0,-1,0]])
@@ -136,7 +141,7 @@ class ISMFeedback:
                 # print(v)
                 # input()
                 # v += - 20 * np.sign(sigma[0]) / self.tl.N1(theta, 0, 0)
-                v += - 5 * np.sign(sigma[0]) 
+                v += - 10 * np.sign(sigma[0]) 
                 # u += - 1 * np.sign(sigma[0]) / self.tl.N1(theta, 0, 0)
 
         u = v + self.constraints(theta)[6]
