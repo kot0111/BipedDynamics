@@ -4,6 +4,8 @@ import scipy as sp
 from dynamics.parameters import BipedParameters
 
 import matplotlib.pyplot as plt
+import os.path
+
 
 # def cross(a, b):
 #     return a[0] * b[1] - a[1] * b[0]
@@ -203,24 +205,37 @@ class Constraints:
 
         fs =18
 
-        fig, ( ax1, ax2, ax3) = plt.subplots(1,3, figsize=(16,4))
+        i = 0 
+
+        while os.path.exists('./figures/constraints' + str(i) + '0.png'):
+            i += 1
+
+        fig, ax1 = plt.subplots(1,1, figsize=(6,4))
         ax1.plot(t, y[6])
         ax1.grid(True)
         ax1.set_ylabel(r'u [Nm]', fontsize=fs)
         ax1.set_xlabel(r'$q_1 = \theta$ [rad]', fontsize=fs)
-        ax1.set_title(r'Torque', fontsize=fs)
+        ax1.set_title(r'Номинальное управление', fontsize=fs)
+        fig.tight_layout(pad = 1.0)
+        fig.savefig('./figures/constraints' + str(i) + '1.png')
 
+        fig, ax2 = plt.subplots(1,1, figsize=(6,4))
         ax2.plot(t, y[0])
         ax2.grid(True)
         ax2.set_ylabel(r'$q_2$ [rad]', fontsize=fs)
         ax2.set_xlabel(r'$q_1 = \theta$ [rad]', fontsize=fs)
-        ax2.set_title(r'Swing leg', fontsize=fs)
+        ax2.set_title(r'Переносная нога', fontsize=fs)
+        fig.tight_layout(pad = 1.0)
+        fig.savefig('./figures/constraints' + str(i) + '2.png')
 
+        fig, ax3 = plt.subplots(1,1, figsize=(6,4))
         ax3.plot(t, y[1])
         ax3.grid(True)
         ax3.set_ylabel(r'$q_3$ [rad]', fontsize=fs)
         ax3.set_xlabel(r'$q_1 = \theta$ [rad]', fontsize=fs)
-        ax3.set_title(r'Torso', fontsize=fs)
+        ax3.set_title(r'Торс', fontsize=fs)
+        fig.tight_layout(pad = 1.0)
+        fig.savefig('./figures/constraints' + str(i) + '3.png')
 
         # ax2.plot(y[0], y[2])
         # ax2.grid(True)
@@ -234,14 +249,15 @@ class Constraints:
         # ax3.set_xlabel(r'$q_3$ [rad]')
         # ax3.set_title(r'Torso')
 
-        ax1.text(-0.1,-0.2, "a)", size=fs, ha="center", 
-         transform=ax1.transAxes)
-        ax2.text(-0.1,-0.2, "b)", size=fs, ha="center", 
-         transform=ax2.transAxes)
-        ax3.text(-0.1,-0.2, "c)", size=fs, ha="center", 
-         transform=ax3.transAxes)
+        # ax1.text(-0.1,-0.2, "a)", size=fs, ha="center", 
+        #  transform=ax1.transAxes)
+        # ax2.text(-0.1,-0.2, "b)", size=fs, ha="center", 
+        #  transform=ax2.transAxes)
+        # ax3.text(-0.1,-0.2, "c)", size=fs, ha="center", 
+        #  transform=ax3.transAxes)
 
-        fig.tight_layout(pad = 1.0)
+        # fig.tight_layout(pad = 1.0)
+        # fig.savefig('./figures/constraints' + str(i) + '.png')
         
         plt.show()
         

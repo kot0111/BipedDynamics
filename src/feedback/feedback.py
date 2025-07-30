@@ -141,7 +141,7 @@ class ISMFeedback:
                 # print(v)
                 # input()
                 # v += - 20 * np.sign(sigma[0]) / self.tl.N1(theta, 0, 0)
-                v += - 10 * np.sign(sigma[0]) 
+                v += - 10 * np.sign(sigma[0]) * 1
                 # u += - 1 * np.sign(sigma[0]) / self.tl.N1(theta, 0, 0)
 
         u = v + self.constraints(theta)[6]

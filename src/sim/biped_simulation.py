@@ -6,8 +6,11 @@ from dynamics.parameters import BipedParameters
 from trajectory.trajectory import PhaseTrajectory
 from scipy.integrate import ode
 from dataclasses import dataclass
+import os.path
+
 
 def animate(trj : PhaseTrajectory, params : BipedParameters, redraw_flag = 0):
+
     fig = plt.figure(figsize=(5,4))
     ax = fig.add_subplot(autoscale_on=False, xlim=(-2.,2.), ylim=(-0.1, 1.6))
     ax.set_aspect('equal')
@@ -40,7 +43,6 @@ def animate(trj : PhaseTrajectory, params : BipedParameters, redraw_flag = 0):
     def animate(j):
         i = j * k
         thisx = [trj.pivot[i] * redraw_flag, x1[i], x2[i], x1[i], x3[i]]
-
         thisy = [0, y1[i], y2[i], y1[i], y3[i]]
 
         line.set_data(thisx, thisy)
@@ -55,13 +57,54 @@ def animate(trj : PhaseTrajectory, params : BipedParameters, redraw_flag = 0):
 
         return line, time_text
     
-    
+    i = 0 
+
+    while os.path.exists('./figures/biped' + str(i) + '.gif'):
+        i += 1
 
     anim = animation.FuncAnimation(
         fig, func=animate, frames=q1.shape[0] // k, interval=interv * k, blit=True, repeat=True)
     
+    anim.save('./figures/biped' + str(i) + '.gif', fps=30, writer='imagemagick')
+    
 
     plt.show()
+
+    if len(trj.t) < 300:
+
+        fig1 = plt.figure(figsize=(16,4))
+        ax1 = fig1.add_subplot()
+        ax1.axes.xaxis.set_ticklabels([])
+        ax1.axes.yaxis.set_ticklabels([])
+
+        step = len(trj.t) // 4
+
+
+        for l in range(5):
+            k = l * step
+
+            if l == 4:
+                k = -1
+
+            gap = 0.8
+
+            q1, q2, q3 = trj.q[k, :]
+
+            x1 = l * gap + leg_lenght * np.sin(q1)
+            y1 = leg_lenght * np.cos(q1)
+            x2 = x1 - leg_lenght * np.sin(q2)
+            y2 = y1 - leg_lenght * np.cos(q2)
+            x3 = x1 + torso_lenght * np.sin(q3)
+            y3 = y1 + torso_lenght * np.cos(q3)
+
+            pointsx = [l * gap, x1, x2, x1, x3]
+            pointsy = [0, y1, y2, y1, y3]
+            ax1.plot(pointsx[0:2], pointsy[0:2], 'o-', lw=2, c='b')
+            ax1.plot(pointsx[1:3], pointsy[1:3], 'o-', lw=2, c='r')
+            ax1.plot(pointsx[3:5], pointsy[3:5], 'o-', lw=2, c='k')
+
+        fig1.savefig('./figures/biped' + str(i) + '.png', dpi=300, bbox_inches='tight')
+        plt.show()
 
 @dataclass
 class SimulationResult:
@@ -69,10 +112,10 @@ class SimulationResult:
     controller_internal_state : list = None
 
 class BipedSimulator:
-    def __init__(self, bippr : BipedParameters, fb : callable, matched_dist : callable = None):
+    def __init__(self, bippr : BipedParameters, fb : callable, matched_dist : callable = None, step = 1e-3):
         self.dynamics = BipedDynamics(bippr)
         self.fb = fb
-        self.step = 1e-3
+        self.step = step
         self.t = None
         if matched_dist is not None:
             self.matched_dist = matched_dist
