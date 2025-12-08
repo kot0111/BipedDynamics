@@ -103,13 +103,14 @@ def animate(trj : PhaseTrajectory, params : BipedParameters, redraw_flag = 0):
             ax1.plot(pointsx[1:3], pointsy[1:3], 'o-', lw=2, c='r')
             ax1.plot(pointsx[3:5], pointsy[3:5], 'o-', lw=2, c='k')
 
-        fig1.savefig('./figures/biped' + str(i) + '.png', dpi=300, bbox_inches='tight')
+        fig1.savefig('./figures/biped' + str(i) + '.eps',  format='eps', bbox_inches='tight')
         plt.show()
 
 @dataclass
 class SimulationResult:
     trajectory : PhaseTrajectory
     controller_internal_state : list = None
+    disturbances : list = None
 
 class BipedSimulator:
     def __init__(self, bippr : BipedParameters, fb : callable, matched_dist : callable = None, step = 1e-3):
@@ -147,7 +148,7 @@ class BipedSimulator:
         self.pivot = 0
 
         if hasattr(self, 'matched_dist'):
-            self.noise = float(self.matched_dist(self.t))
+            self.noise = float(self.matched_dist(self.state, self.t))
         else:
             self.noise = 0.0
         
@@ -157,6 +158,8 @@ class BipedSimulator:
         solx = [self.state]
         solu = [self.u]
         pivot = [self.pivot]
+        noise = [self.noise]
+
         if hasattr(self.fb, 'state'):
             solfb = [np.copy(self.fb.state)]
         else:
@@ -209,7 +212,7 @@ class BipedSimulator:
                 #     u_delayed -= self.motor_dry_friction * np.sign(dtheta)
 
                 self.u = float(u_delayed)
-                self.noise = float(self.matched_dist(self.t)) if hasattr(self, 'matched_dist') else 0.0
+                self.noise = float(self.matched_dist(self.state, self.t)) if hasattr(self, 'matched_dist') else 0.0
 
                 solx[-1] = np.concatenate((solx[-1], ddq[3:6]))
 
@@ -221,6 +224,7 @@ class BipedSimulator:
                 solx.append(self.state.copy())
                 solu.append(self.u)
                 pivot.append(self.pivot)
+                noise.append(self.noise)
 
                 if hasattr(self.fb, 'state'):
                     solfb.append(np.copy(self.fb.state))
@@ -238,6 +242,7 @@ class BipedSimulator:
                 solx.append(self.state.copy())
                 solu.append(self.u)
                 pivot.append(self.pivot)
+                noise.append(self.noise)
 
                 if hasattr(self.fb, 'state'):
                     solfb.append(np.copy(self.fb.state))
@@ -264,17 +269,20 @@ class BipedSimulator:
         x = solx[-1].copy()
         u = solu[-1]
         piv = pivot[-1]
+        nos = noise[-1]
 
         solt = solt[n_last_step_start::gap]
         solx = solx[n_last_step_start::gap]
         solu = solu[n_last_step_start::gap]
         pivot = pivot[n_last_step_start::gap]
+        noise = noise[n_last_step_start::gap]
 
         if last_not_in_array:
             solt.append(t)
             solx.append(x.copy())
             solu.append(u)
             pivot.append(piv)
+            noise.append(nos)
 
         if hasattr(self.fb, 'state'):
             fb = solfb[-1].copy()
@@ -289,6 +297,7 @@ class BipedSimulator:
                 u = np.asanyarray(solu),
                 pivot = np.asanyarray(pivot)
             ),
-            controller_internal_state = solfb
+            controller_internal_state = solfb,
+            disturbances = noise
         )
         return result

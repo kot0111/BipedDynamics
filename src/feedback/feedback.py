@@ -106,6 +106,8 @@ class ISMFeedback:
 
         theta, q2, q3, dtheta, dq2, dq3 = state
 
+        # print(np.sign(dtheta - dq2))
+
         clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
         theta = clamp(theta, self.trajectory.theta[0], self.trajectory.theta[-1])
 
@@ -119,9 +121,10 @@ class ISMFeedback:
 
         if ism:
             if self.state is None:
-                self.state = np.zeros((7,))
+                self.state = np.zeros((8,))
                 self.state[0] = t
                 self.state[1:7] = state
+                self.state[7] = 0
                 # self.zero_state = self.state
 
             else:
@@ -136,7 +139,7 @@ class ISMFeedback:
                 
                 # sigma = G @ (xp - expected_trans)
                 sigma = G @ (state - self.state[1:7])
-
+                self.state[7] = sigma
                 # print(self.tl.N1(theta, 0, 0))
                 # print(v)
                 # input()

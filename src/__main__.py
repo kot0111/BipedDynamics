@@ -1,3 +1,6 @@
+# import matplotlib
+# matplotlib.use("Qt5Agg")
+
 from dynamics.parameters import load_biped_parameters
 from dynamics.biped_dynamics import BipedDynamics, Constraints
 from trajectory.trajectory import PhaseTrajectory, get_trajectory
@@ -89,9 +92,9 @@ if __name__ == "__main__":
     # state_plus = np.array([theta, - theta, phi3, theta_dot, phi2_prime * theta_dot, phi3_prime * theta_dot])
     # # System['parameters_mod'] = load_biped_parameters("biped_mod.json")
 
-    noise = lambda t: (5 * np.sin(2 * np.pi * 4 * t) + np.sin(2 * np.pi * 40 *t) + 3) * 10
-    
-    # noise = None
+    # noise = lambda _, t: (5 * np.sin(2 * np.pi * 4 * t) + np.sin(2 * np.pi * 40 *t) + 3) * 10
+    noise = None
+    # noise = lambda x, t : 3 + 4 * np.sin(8* np.pi * t) - 3 * np.sign( x[3] - x[4])
 
     feedback = Feedback(System['transverse_linearization'])
     sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise)
@@ -99,13 +102,13 @@ if __name__ == "__main__":
     # animate(result1.trajectory, System['parameters'],redraw_flag=1)
 
     feedback = ISMFeedback(System['transverse_linearization'])
-    sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise, step=1e-4)
+    sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise, step=1e-3)
     result2 = sim.run(state_plus, 0, 10.0, get_last_step=False)
-    # animate(result2.trajectory, System['parameters'],redraw_flag=1)
+    animate(result2.trajectory, System['parameters'],redraw_flag=1)
 
     fs = 24
     fig1, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, 1, figsize=(16,10))
-    fig1.suptitle(r'Трансверсальные координаты', fontsize=fs+1)
+    fig1.suptitle(r'Transverse coordinates', fontsize=fs+5)
 
     
     t = result1.trajectory.t
@@ -130,11 +133,11 @@ if __name__ == "__main__":
 
     # fig2, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, 1)
 
-    # ax0.plot(result2.trajectory.t, trcor[:, 0])
-    # ax1.plot(result2.trajectory.t, trcor[:, 1])
-    # ax2.plot(result2.trajectory.t, trcor[:, 2])
-    # ax3.plot(result2.trajectory.t, trcor[:, 3])
-    # ax4.plot(result2.trajectory.t, trcor[:, 4])
+    ax0.plot(result2.trajectory.t, trcor[:, 0], linewidth=3)
+    ax1.plot(result2.trajectory.t, trcor[:, 1], linewidth=3)
+    ax2.plot(result2.trajectory.t, trcor[:, 2], linewidth=3)
+    ax3.plot(result2.trajectory.t, trcor[:, 3], linewidth=3)
+    ax4.plot(result2.trajectory.t, trcor[:, 4], linewidth=3)
 
   
     ax0.grid(True)
@@ -168,16 +171,19 @@ if __name__ == "__main__":
     fig1.tight_layout(pad = 1.0)
     fig1.align_ylabels()
     
-    # plt.figlegend(['LR', 'LR + ISM'], fontsize=fs, framealpha=0.0, ncols = 2)
-    plt.savefig('./figures/transverse.png', dpi=300, bbox_inches='tight')
+    plt.figlegend(['LR', 'LR + ISM'], fontsize=fs, framealpha=0.0, ncols = 2)
+    plt.savefig('./figures/transverse.eps', format='eps', bbox_inches='tight')
     plt.show()
 
-    fig1, (ax1) = plt.subplots()
-    ax1.plot(result1.trajectory.t, result1.trajectory.feed_forward)
-    ax1.plot(result1.trajectory.t, noise(result1.trajectory.t))
-    ax1.set_ylabel(r'$\tau$ [Nm]')
-    ax1.set_xlabel(r'$q_1 = \theta$ [rad]')
-    ax1.set_title(r'Torque1')
+    fig1, (ax1) = plt.subplots(figsize=(16,5))
+    ax1.plot(result2.trajectory.t, np.array(result2.controller_internal_state)[:,7])
+    # ax1.plot(result2.trajectory.t, np.array(result2.disturbances))
+    # ax1.plot(result1.trajectory.t, result1.trajectory.feed_forward)
+    # ax1.plot(result1.trajectory.t, noise(result1.trajectory.t))
+    ax1.set_ylabel(r'$\sigma(t)$ [Nm]', fontsize=fs)
+    ax1.set_xlabel(r'time [sec]', fontsize=fs)
+    plt.savefig('./figures/sigma.eps', format='eps', bbox_inches='tight')
+    # ax1.set_title(r'Torque1')
 
     # fig2, (ax2) = plt.subplots()
     # ax2.plot(result2.trajectory.t, result2.trajectory.feed_forward)
