@@ -23,7 +23,7 @@ class TransverseLinearization:
         self._init_psi()
         self._init_part()
         self.switching_linearization()
-        self.Ku = self.mat_file()        
+        self.Ku, self.Al, self.Bl = self.mat_file()        
 
     def get_trans_funs(self):
         K = self.dynamics.params.K
@@ -264,28 +264,36 @@ class TransverseLinearization:
         if not os.path.exists("fbcoeffsLLK" + "Iter" * TransverseLinearization.class_counter +".mat"):
 
             n = len(self.trajectory.t)
-            A = np.zeros((n, 5, 5))
-            B = np.zeros((n, 5, 1))
+            Al = np.zeros((n, 5, 5))
+            Bl = np.zeros((n, 5, 1))
             L = np.zeros((5, 5))
 
             for i in range(n):
-                A[i], B[i] = self.matrix(i)
+                Al[i], Bl[i] = self.matrix(i)
 
-            A = np.transpose(A, (1,2,0))
-            B = np.transpose(B, (1,2,0))
+            A = np.transpose(Al, (1,2,0))
+            B = np.transpose(Bl, (1,2,0))
 
             sio.savemat("matrixL" + "Iter" * TransverseLinearization.class_counter +".mat", {'t':self.trajectory.t, 'A':A, 'B':B, 'Lin_mat': self.L})  
+        else:
+            A = sio.loadmat("matrixL" + "Iter" * TransverseLinearization.class_counter +".mat")['A']
+            B = sio.loadmat("matrixL" + "Iter" * TransverseLinearization.class_counter +".mat")['B']
+
+            Al = np.transpose(A, (2,0,1))
+            Bl = np.transpose(B, (2,0,1))
+            # print(Al[0])
 
         # P_real = sio.loadmat("fbcoeffsL.mat")['P_real']
         K_real = sio.loadmat("fbcoeffsLLK" + "Iter" * TransverseLinearization.class_counter +".mat")['K_real']
-        K = np.zeros((len(self.trajectory.t), 1, 5))
-        for i in range(len(self.trajectory.t)):
-            # K[i] = B[:, :, i].T @ P_real[:,:,i]
-            K[i] = - K_real[:,:,i]
+        # K = np.zeros((len(self.trajectory.t), 1, 5))
+        # for i in range(len(self.trajectory.t)):
+        #     # K[i] = B[:, :, i].T @ P_real[:,:,i]
+        #     K[i] = - K_real[:,:,i]
+        K = -np.transpose(K_real, (2, 0, 1))
         
 
         # print(K[0])
-        return K
+        return K, Al, Bl
     
     def _init_psi(self):
 

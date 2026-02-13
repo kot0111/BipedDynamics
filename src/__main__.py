@@ -4,12 +4,26 @@
 from dynamics.parameters import load_biped_parameters
 from dynamics.biped_dynamics import BipedDynamics, Constraints
 from trajectory.trajectory import PhaseTrajectory, get_trajectory
-from sim.biped_simulation import animate, BipedSimulator
+from sim.biped_simulation import animate, BipedSimulator, transverse_sim
 from transverse_linearization.linearization import TransverseLinearization
 from feedback.feedback import Feedback, ISMFeedback
 import matplotlib.pyplot as plt
 
 import numpy as np
+
+def get_scaled_state_plus(v, k, state_plus_zero):
+
+    v = v * k
+    result = np.copy(state_plus_zero)
+    dtheta = result[3]
+
+    result[1] = result[1] + v[1]
+    result[2] = result[2] + v[2]
+    result[3] = np.sqrt(result[3]**2 + v[0])
+    result[4] = result[4] / dtheta * result[3] + v[3]
+    result[5] = result[5] / dtheta * result[3] + v[4]
+
+    return result
 
 
 if __name__ == "__main__":
@@ -87,10 +101,20 @@ if __name__ == "__main__":
     System['constraints'] = Constraints(System['dynamics'], opt=False, phase_trajectory = result.trajectory)
     System['transverse_linearization'] = TransverseLinearization(System['trajectory'], System['constraints'], System['dynamics'])
 
+    # print("aaa", System['constraints'](0))
+
     K, theta, phi3, theta_dot, phi2_prime, phi3_prime, u = System['constraints'].initial_state
     state_plus = np.array([0.5 * theta, - 0.5 * theta, 0, theta_dot, phi2_prime * 0.5 * theta_dot, 0])
-    # state_plus = np.array([theta, - theta, phi3, theta_dot, phi2_prime * theta_dot, phi3_prime * theta_dot])
+    state_plus = np.array([theta, - theta, phi3, theta_dot, phi2_prime * theta_dot, phi3_prime * theta_dot])
     # # System['parameters_mod'] = load_biped_parameters("biped_mod.json")
+    # state_plus = np.array([0.95 * theta, - 0.95 * theta, 0.95 * phi3, theta_dot, phi2_prime * theta_dot, phi3_prime * theta_dot])
+    state_plus = get_scaled_state_plus(np.array([0.935, 0, 0.0585, 0.3387, 0.0877]), 0.02, np.array([theta, - theta, phi3, theta_dot, phi2_prime * theta_dot, phi3_prime * theta_dot]))
+    
+    # dth = System['trajectory'].theta_sp(0)[0]
+    # state_plus = np.array([0, - 0.378, 1.035, dth, -1.67 * dth, 0.189 * dth])
+    # state_plus = get_scaled_state_plus(np.array([0.1, 0.3, 1.0585, 1.3387, 1.0877]), 0.05, np.array([0, - 0.378, 1.035, dth, -1.67 * dth, 0.189 * dth]))
+
+    state_plus = get_scaled_state_plus(np.array([0.7334, 0, 0.2733, -0.0763, 0.6178]), 0.1, np.array([theta, - theta, phi3, theta_dot, phi2_prime * theta_dot, phi3_prime * theta_dot]))
 
     # noise = lambda _, t: (5 * np.sin(2 * np.pi * 4 * t) + np.sin(2 * np.pi * 40 *t) + 3) * 10
     noise = None
@@ -98,13 +122,15 @@ if __name__ == "__main__":
 
     feedback = Feedback(System['transverse_linearization'])
     sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise)
-    result1 = sim.run(state_plus, 0, 10.0, get_last_step=False)
+    result1 = sim.run(state_plus, 0, 0.6, get_last_step=False)
     # animate(result1.trajectory, System['parameters'],redraw_flag=1)
 
-    feedback = ISMFeedback(System['transverse_linearization'])
-    sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise, step=1e-3)
-    result2 = sim.run(state_plus, 0, 10.0, get_last_step=False)
-    animate(result2.trajectory, System['parameters'],redraw_flag=1)
+    t_tr, x_tr = transverse_sim(feedback, result1, state_plus, 0, 0.6)
+
+    # feedback = ISMFeedback(System['transverse_linearization'])
+    # sim = BipedSimulator(System['parameters'], feedback, matched_dist=noise, step=1e-3)
+    # result2 = sim.run(state_plus, 0, 5, get_last_step=False)
+    # # animate(result2.trajectory, System['parameters'],redraw_flag=1)
 
     fs = 24
     fig1, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, 1, figsize=(16,10))
@@ -124,20 +150,26 @@ if __name__ == "__main__":
     ax2.plot(t, trcor[:, 2])
     ax3.plot(t, trcor[:, 3])
     ax4.plot(t, trcor[:, 4])
+
+    ax0.plot(t_tr, x_tr[:, 0], linewidth=3)
+    ax1.plot(t_tr, x_tr[:, 1], linewidth=3)
+    ax2.plot(t_tr, x_tr[:, 2], linewidth=3)
+    ax3.plot(t_tr, x_tr[:, 3], linewidth=3)
+    ax4.plot(t_tr, x_tr[:, 4], linewidth=3)
     
-    trcor = np.zeros((len(result2.trajectory.t), 5))
+    # trcor = np.zeros((len(result2.trajectory.t), 5))
 
-    trj = result2.trajectory.trajectory
-    for i in range(len(result2.trajectory.t)):
-        trcor[i, :] = feedback.get_transverse(trj[i, :])
+    # trj = result2.trajectory.trajectory
+    # for i in range(len(result2.trajectory.t)):
+    #     trcor[i, :] = feedback.get_transverse(trj[i, :])
 
-    # fig2, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, 1)
+    # # fig2, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, 1)
 
-    ax0.plot(result2.trajectory.t, trcor[:, 0], linewidth=3)
-    ax1.plot(result2.trajectory.t, trcor[:, 1], linewidth=3)
-    ax2.plot(result2.trajectory.t, trcor[:, 2], linewidth=3)
-    ax3.plot(result2.trajectory.t, trcor[:, 3], linewidth=3)
-    ax4.plot(result2.trajectory.t, trcor[:, 4], linewidth=3)
+    # ax0.plot(result2.trajectory.t, trcor[:, 0], linewidth=3)
+    # ax1.plot(result2.trajectory.t, trcor[:, 1], linewidth=3)
+    # ax2.plot(result2.trajectory.t, trcor[:, 2], linewidth=3)
+    # ax3.plot(result2.trajectory.t, trcor[:, 3], linewidth=3)
+    # ax4.plot(result2.trajectory.t, trcor[:, 4], linewidth=3)
 
   
     ax0.grid(True)
@@ -171,12 +203,12 @@ if __name__ == "__main__":
     fig1.tight_layout(pad = 1.0)
     fig1.align_ylabels()
     
-    plt.figlegend(['LR', 'LR + ISM'], fontsize=fs, framealpha=0.0, ncols = 2)
+    # plt.figlegend(['LR', 'LR + ISM'], fontsize=fs, framealpha=0.0, ncols = 2)
     plt.savefig('./figures/transverse.eps', format='eps', bbox_inches='tight')
     plt.show()
 
     fig1, (ax1) = plt.subplots(figsize=(16,5))
-    ax1.plot(result2.trajectory.t, np.array(result2.controller_internal_state)[:,7])
+    # ax1.plot(result2.trajectory.t, np.array(result2.controller_internal_state)[:,7])
     # ax1.plot(result2.trajectory.t, np.array(result2.disturbances))
     # ax1.plot(result1.trajectory.t, result1.trajectory.feed_forward)
     # ax1.plot(result1.trajectory.t, noise(result1.trajectory.t))
@@ -191,5 +223,7 @@ if __name__ == "__main__":
     # ax2.set_xlabel(r'$q_1 = \theta$ [rad]')
     # ax2.set_title(r'Torque2')
     plt.show()
+
+    
 
     

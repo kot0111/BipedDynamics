@@ -4,7 +4,9 @@ from matplotlib import animation
 from dynamics.biped_dynamics import  BipedDynamics
 from dynamics.parameters import BipedParameters
 from trajectory.trajectory import PhaseTrajectory
+from feedback.feedback import Feedback
 from scipy.integrate import ode
+from scipy.interpolate import make_interp_spline
 from dataclasses import dataclass
 import os.path
 
@@ -172,6 +174,8 @@ class BipedSimulator:
             if get_last_step:
                 n_last_step_start = len(solt)
 
+            # print(self.fb.get_transverse(self.state))
+
             integrator = ode(rhs)
             integrator.set_initial_value(self.state, self.t)
             integrator.set_integrator('dopri5', max_step=self.step)
@@ -301,3 +305,80 @@ class BipedSimulator:
             disturbances = noise
         )
         return result
+    
+def transverse_sim(
+    fb: Feedback,
+    trj: SimulationResult,
+    initial_state: np.ndarray,
+    tstart: float,
+    tend: float
+):
+    # Начальное состояние в поперечных координатах
+    x_init = fb.get_transverse(initial_state)
+
+    step = 1e-3
+
+    # Временная сетка одного шага
+    t_grid = fb.tl.trajectory.t
+    Tstep = t_grid[-1] - t_grid[0]
+
+    N = len(t_grid)
+
+    # Интерполяция матриц
+    A_flat = fb.tl.Al.reshape(N, -1)
+    B_flat = fb.tl.Bl.reshape(N, -1)
+
+    A_spline = make_interp_spline(t_grid, A_flat, k=5)
+    B_spline = make_interp_spline(t_grid, B_flat, k=5)
+
+    def rhs(t_local, x):
+        # локальное время -> абсолютное время
+        t_star = t_local + fb.tl.trajectory.t[0]
+
+        A = A_spline(t_star).reshape(5, 5)
+        B = B_spline(t_star).reshape(5, -1)
+        K = fb.K(t_star)
+
+        return A @ x - B.flatten() * (K @ x)
+
+    # ===== ХРАНЕНИЕ РЕЗУЛЬТАТОВ =====
+    solt = [tstart]
+    solx = [x_init.copy()]
+
+    t_global = tstart
+    x_current = x_init.copy()
+
+    while True:
+        # Интегратор для одного шага
+        integrator = ode(rhs)
+        integrator.set_integrator('dopri5', max_step=step)
+        integrator.set_initial_value(x_current, 0)
+
+        t_local = 0
+
+        # Интегрируем один шаг
+        while integrator.successful() and t_local < Tstep:
+            integrator.integrate(t_local + step)
+            t_local = integrator.t
+
+            t_global = tstart + t_local
+            solt.append(t_global)
+            solx.append(integrator.y.copy())
+
+            if t_global >= tend:
+                return solt, np.array(solx)
+
+        # ===== ПЕРЕКЛЮЧЕНИЕ В КОНЦЕ ШАГА =====
+        x_end = integrator.y.copy()
+
+        Lin_mat = np.array([[0.348927646412133, 9.92737721132312, 1.53756045601568, -0.132131506627089, -1.27526477233225e-12],
+                            [0, 0, 0, 0, 0],
+                            [0, 0, 1, 0, 0],
+                            [-0.0263589762927089, 4.30852906270962, 0.773564731105125, -0.0664769134615106, -3.99680288865056e-12],
+                            [0.276530273925065, -3.89124459363716, 0.260301217608672, 0.0353350465849278, 1.00000000000022]])
+
+        x_current = Lin_mat @ x_end
+
+        # Сдвигаем начало следующего шага
+        tstart += Tstep
+
