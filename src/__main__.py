@@ -1,5 +1,5 @@
-# import matplotlib
-# matplotlib.use("Qt5Agg")
+import matplotlib
+matplotlib.use('TkAgg')
 
 from dynamics.parameters import load_biped_parameters
 from dynamics.biped_dynamics import BipedDynamics, Constraints

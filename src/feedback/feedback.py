@@ -58,7 +58,7 @@ class Feedback:
         
         u = v + self.constraints(theta)[6]
 
-        return u
+        return u[0]
     
 class ISMFeedback:
     def __init__(self, tl: TransverseLinearization):
